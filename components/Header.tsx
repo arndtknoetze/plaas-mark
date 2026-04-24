@@ -11,7 +11,9 @@ const Bar = styled.header`
   top: 0;
   z-index: 50;
   background: #ffffff;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.06),
+    0 4px 12px rgba(0, 0, 0, 0.04);
 `;
 
 const Inner = styled(Container)`
@@ -31,14 +33,14 @@ const Inner = styled(Container)`
 const Brand = styled(Link)`
   position: relative;
   display: block;
-  height: 30px;
-  width: 148px;
+  height: 40px;
+  width: 198px;
   flex-shrink: 0;
   text-decoration: none;
 
   @media (min-width: 768px) {
-    height: 34px;
-    width: 168px;
+    height: 46px;
+    width: 228px;
   }
 
   &:focus-visible {
@@ -66,7 +68,57 @@ const IconButton = styled.button`
   background: transparent;
   color: ${({ theme }) => theme.colors.textDark};
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+
+  &:hover {
+    background: ${({ theme }) => theme.colors.background};
+    color: ${({ theme }) => theme.colors.primary};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.colors.accent};
+    outline-offset: 2px;
+  }
+`;
+
+const ShopLink = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.colors.textDark};
+  text-decoration: none;
+  white-space: nowrap;
+
+  &:hover {
+    background: ${({ theme }) => theme.colors.background};
+    color: ${({ theme }) => theme.colors.primary};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.colors.accent};
+    outline-offset: 2px;
+  }
+`;
+
+const OrdersLink = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.colors.textDark};
+  text-decoration: none;
+  white-space: nowrap;
 
   &:hover {
     background: ${({ theme }) => theme.colors.background};
@@ -89,7 +141,9 @@ const CartLink = styled(Link)`
   border-radius: 10px;
   color: ${({ theme }) => theme.colors.textDark};
   text-decoration: none;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 
   &:hover {
     background: ${({ theme }) => theme.colors.background};
@@ -152,17 +206,19 @@ export function Header() {
   return (
     <Bar>
       <Inner>
-        <Brand href="/">
+        <Brand href="/shop">
           <Image
             src="/logo.png"
             alt="PlaasMark"
             fill
-            sizes="(max-width: 767px) 148px, 168px"
+            sizes="(max-width: 767px) 198px, 228px"
             priority
             style={{ objectFit: "contain", objectPosition: "left center" }}
           />
         </Brand>
         <Actions>
+          <ShopLink href="/shop">Winkel</ShopLink>
+          <OrdersLink href="/my-orders">My orders</OrdersLink>
           <CartLink
             href="/cart"
             aria-label={count ? `Mandjie, ${count} items` : "Mandjie"}

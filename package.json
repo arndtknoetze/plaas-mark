@@ -6,13 +6,27 @@
     "dev": "next dev -p 3002",
     "build": "node scripts/generate-pwa-icons.mjs && next build",
     "start": "next start -p 3002",
-    "lint": "eslint",
+    "lint": "eslint .",
+    "format": "prettier --write --ignore-unknown .",
+    "format:check": "prettier --check --ignore-unknown .",
     "icons": "node scripts/generate-pwa-icons.mjs",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "postinstall": "prisma generate"
+    "db:seed": "prisma db seed",
+    "postinstall": "prisma generate",
+    "prepare": "husky"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.mjs"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,mjs,cjs}": [
+      "eslint --fix --max-warnings 0",
+      "prettier --write --ignore-unknown"
+    ],
+    "*.{json,md,css,yml,yaml}": "prettier --write --ignore-unknown"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
@@ -27,6 +41,9 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.4.3",
+    "prettier": "^3.6.2",
     "prisma": "^6.19.0",
     "sharp": "^0.34.5",
     "typescript": "^5"

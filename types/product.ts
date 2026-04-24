@@ -3,4 +3,7 @@ export type Product = {
   title: string;
   price: number;
   unit?: string;
+  vendorId: string;
+  vendorName: string;
+  image?: string;
 };

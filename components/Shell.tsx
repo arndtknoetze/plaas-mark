@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import styled from "styled-components";
 import { Container } from "@/components/Container";
 import { Header } from "@/components/Header";
@@ -19,6 +20,19 @@ const Main = styled.main`
 `;
 
 export function Shell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isComingSoonHome = pathname === "/";
+
+  if (isComingSoonHome) {
+    return (
+      <Root>
+        <ServiceWorkerRegister />
+        <Main>{children}</Main>
+        <PwaInstallPrompt />
+      </Root>
+    );
+  }
+
   return (
     <Root>
       <Header />

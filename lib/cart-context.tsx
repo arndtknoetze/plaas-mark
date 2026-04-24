@@ -14,12 +14,15 @@ type AddPayload = {
   name: string;
   price: number;
   quantity?: number;
+  vendorId?: string;
+  vendorName?: string;
 };
 
 type CartContextValue = {
   items: CartItem[];
   addToCart: (payload: AddPayload) => void;
   removeFromCart: (productId: string) => void;
+  clearCart: () => void;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -29,6 +32,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addToCart = useCallback((payload: AddPayload) => {
     const qty = payload.quantity ?? 1;
+    const vendorId = payload.vendorId ?? "";
+    const vendorName = payload.vendorName ?? "";
+
     setItems((prev) => {
       const index = prev.findIndex((x) => x.productId === payload.productId);
       if (index === -1) {
@@ -39,6 +45,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             name: payload.name,
             price: payload.price,
             quantity: qty,
+            vendorId,
+            vendorName,
           },
         ];
       }
@@ -53,14 +61,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems((prev) => prev.filter((x) => x.productId !== productId));
   }, []);
 
+  const clearCart = useCallback(() => {
+    setItems([]);
+  }, []);
+
   const value = useMemo(
-    () => ({ items, addToCart, removeFromCart }),
-    [items, addToCart, removeFromCart],
+    () => ({ items, addToCart, removeFromCart, clearCart }),
+    [items, addToCart, removeFromCart, clearCart],
   );
 
-  return (
-    <CartContext.Provider value={value}>{children}</CartContext.Provider>
-  );
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
 export function useCart() {

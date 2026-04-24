@@ -53,7 +53,9 @@ const Row = styled.li`
   padding: 16px;
   background: #ffffff;
   border-radius: 12px;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.04),
+    0 2px 8px rgba(0, 0, 0, 0.06);
 `;
 
 const LineInfo = styled.div`
@@ -66,6 +68,12 @@ const LineInfo = styled.div`
 const LineName = styled.span`
   font-weight: 600;
   color: ${({ theme }) => theme.colors.textDark};
+`;
+
+const LineVendor = styled.span`
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: ${({ theme }) => theme.colors.textLight};
 `;
 
 const LineMeta = styled.span`
@@ -88,7 +96,9 @@ const RemoveBtn = styled.button`
   color: ${({ theme }) => theme.colors.textDark};
   background: #ffffff;
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 
   &:hover {
     border-color: ${({ theme }) => theme.colors.primary};
@@ -108,6 +118,31 @@ const Empty = styled.p`
   color: ${({ theme }) => theme.colors.textLight};
 `;
 
+const CheckoutLink = styled(Link)`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 52px;
+  margin-top: 20px;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: ${({ theme }) => theme.colors.primary};
+  text-decoration: none;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: ${({ theme }) => theme.colors.secondary};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.colors.accent};
+    outline-offset: 2px;
+  }
+`;
+
 function formatPrice(value: number) {
   return `R ${value.toFixed(2).replace(".", ",")}`;
 }
@@ -117,7 +152,7 @@ export default function CartPage() {
 
   return (
     <>
-      <BackLink href="/">← Terug na winkel</BackLink>
+      <BackLink href="/shop">← Terug na winkel</BackLink>
       <Title>Jou mandjie</Title>
       {items.length === 0 ? (
         <Empty>Jou mandjie is leeg.</Empty>
@@ -127,12 +162,13 @@ export default function CartPage() {
             <Row key={line.productId}>
               <LineInfo>
                 <LineName>{line.name}</LineName>
+                {line.vendorName ? (
+                  <LineVendor>{line.vendorName}</LineVendor>
+                ) : null}
                 <LineMeta>
                   {formatPrice(line.price)} × {line.quantity}
                 </LineMeta>
-                <LineTotal>
-                  {formatPrice(line.price * line.quantity)}
-                </LineTotal>
+                <LineTotal>{formatPrice(line.price * line.quantity)}</LineTotal>
               </LineInfo>
               <RemoveBtn
                 type="button"
@@ -144,6 +180,9 @@ export default function CartPage() {
           ))}
         </List>
       )}
+      {items.length > 0 ? (
+        <CheckoutLink href="/checkout">Gaan na betaal</CheckoutLink>
+      ) : null}
     </>
   );
 }

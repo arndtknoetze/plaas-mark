@@ -3,15 +3,83 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
+model Customer {
+  id     String  @id @default(uuid())
+  name   String
+  phone  String  @unique
+  orders Order[]
+}
+
 model Product {
+  id         String   @id @default(cuid())
+  title      String
+  price      Decimal  @db.Decimal(10, 2)
+  unit       String?
+  vendorId   String   @default("")
+  vendorName String   @default("")
+  image      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Order {
+  id         String      @id @default(cuid())
+  customerId String
+  customer   Customer    @relation(fields: [customerId], references: [id])
+  notes      String?
+  createdAt  DateTime    @default(now())
+  items      OrderItem[]
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  name        String
+  price       Decimal  @db.Decimal(10, 2)
+  quantity    Int
+  vendorId    String   @default("")
+  vendorName  String   @default("")
+
+  @@index([orderId])
+}
+
+/// Short-lived 6-digit challenge; replaced on each new request for the same phone.
+model PhoneOtpChallenge {
   id        String   @id @default(cuid())
-  title     String
-  price     Decimal  @db.Decimal(10, 2)
-  unit      String?
+  phone     String
+  code      String
+  expiresAt DateTime
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+
+  @@index([phone])
+}
+
+/// Issued after correct OTP; required to place an order for that phone (single use).
+model PhoneVerifyToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  phone     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+}
+
+/// Fixed-window counters for API rate limits (e.g. POST /api/orders per IP).
+model RateLimitBucket {
+  id        String   @id @default(cuid())
+  scope     String
+  bucketKey String
+  windowId  String
+  count     Int      @default(0)
+  expiresAt DateTime
+
+  @@unique([scope, bucketKey, windowId])
+  @@index([expiresAt])
 }

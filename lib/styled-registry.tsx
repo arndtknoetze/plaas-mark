@@ -7,7 +7,6 @@ import {
   StyleSheetManager,
   ThemeProvider,
 } from "styled-components";
-import { SessionProvider } from "@/components/SessionProvider";
 import { CartProvider } from "@/lib/cart-context";
 import { GlobalStyles } from "@/styles/global";
 import { theme } from "@/styles/theme";
@@ -28,12 +27,10 @@ export function StyledComponentsRegistry({
   if (typeof window !== "undefined") {
     return (
       <ThemeProvider theme={theme}>
-        <SessionProvider>
-          <CartProvider>
-            <GlobalStyles />
-            {children}
-          </CartProvider>
-        </SessionProvider>
+        <CartProvider>
+          <GlobalStyles />
+          {children}
+        </CartProvider>
       </ThemeProvider>
     );
   }
@@ -41,12 +38,10 @@ export function StyledComponentsRegistry({
   return (
     <StyleSheetManager sheet={sheet.instance}>
       <ThemeProvider theme={theme}>
-        <SessionProvider>
-          <CartProvider>
-            <GlobalStyles />
-            {children}
-          </CartProvider>
-        </SessionProvider>
+        <CartProvider>
+          <GlobalStyles />
+          {children}
+        </CartProvider>
       </ThemeProvider>
     </StyleSheetManager>
   );
