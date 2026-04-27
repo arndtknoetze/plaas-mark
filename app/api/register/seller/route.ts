@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
+import { logApiLocationDebug } from "@/lib/api-location-debug-log";
 import { prisma } from "@/lib/db";
+import { getLocationFromHeaders } from "@/lib/location";
+import { isPhoneOtpDisabled } from "@/lib/phone-otp";
 import { slugify } from "@/lib/slug";
 
 type BodyPayload = {
@@ -38,12 +41,33 @@ function normalizeOptionalLogoUrl(input: unknown): string | null {
   return v;
 }
 
+const FORBIDDEN_LOCATION_BODY_KEYS = [
+  "locationId",
+  "locationSlug",
+  "location",
+] as const;
+
 export async function POST(request: Request) {
   let body: BodyPayload;
   try {
     body = (await request.json()) as BodyPayload;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  if (body && typeof body === "object") {
+    const o = body as Record<string, unknown>;
+    for (const key of FORBIDDEN_LOCATION_BODY_KEYS) {
+      if (key in o && o[key] !== undefined) {
+        return NextResponse.json(
+          {
+            error:
+              "Location is set automatically from the site you are on; do not send location fields.",
+          },
+          { status: 400 },
+        );
+      }
+    }
   }
 
   const name = typeof body.name === "string" ? body.name.trim() : "";
@@ -63,32 +87,45 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  if (!verificationToken) {
+  if (!isPhoneOtpDisabled() && !verificationToken) {
     return NextResponse.json(
       { error: "Phone verification is required." },
       { status: 400 },
     );
   }
 
+  let location;
+  try {
+    location = await getLocationFromHeaders();
+  } catch {
+    return NextResponse.json(
+      { error: "Location could not be resolved. Try again later." },
+      { status: 500 },
+    );
+  }
+
   try {
     const result = await prisma.$transaction(async (tx) => {
-      const removed = await tx.phoneVerifyToken.deleteMany({
-        where: {
-          token: verificationToken,
-          phone,
-          expiresAt: { gt: new Date() },
-        },
-      });
-      if (removed.count !== 1) {
-        throw new ForbiddenRegistrationError(
-          "Invalid or expired verification. Request a new code and try again.",
-        );
+      if (!isPhoneOtpDisabled()) {
+        const removed = await tx.phoneVerifyToken.deleteMany({
+          where: {
+            token: verificationToken,
+            phone,
+            expiresAt: { gt: new Date() },
+          },
+        });
+        if (removed.count !== 1) {
+          throw new ForbiddenRegistrationError(
+            "Invalid or expired verification. Request a new code and try again.",
+          );
+        }
       }
 
-      const seller = await tx.seller.upsert({
+      const member = await tx.member.upsert({
         where: { phone },
-        create: { name, phone, brandName, brandColor, logoUrl },
-        update: { name, brandName, brandColor, logoUrl },
+        create: { name, phone },
+        update: { name },
+        select: { id: true },
       });
 
       const baseSlug = slugify(brandName) || "store";
@@ -98,7 +135,8 @@ export async function POST(request: Request) {
         try {
           const created = await tx.store.create({
             data: {
-              sellerId: seller.id,
+              memberId: member.id,
+              locationId: location.id,
               name: brandName,
               slug,
               brandColor,
@@ -117,14 +155,20 @@ export async function POST(request: Request) {
         throw new Error("Failed to create store.");
       }
 
-      return { seller, store };
+      return { store, member };
+    });
+
+    await logApiLocationDebug("POST /api/register/seller", {
+      resolvedLocationId: location.id,
+      newStoreLocationId: location.id,
+      otpBypass: isPhoneOtpDisabled(),
     });
 
     return NextResponse.json({
       ok: true,
-      sellerId: result.seller.id,
       storeId: result.store.id,
       storeSlug: result.store.slug,
+      memberId: result.member.id,
     });
   } catch (err) {
     if (err instanceof ForbiddenRegistrationError) {

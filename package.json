@@ -15,6 +15,7 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
+    "db:setup": "prisma migrate deploy && prisma db seed",
     "postinstall": "prisma generate",
     "prepare": "husky"
   },

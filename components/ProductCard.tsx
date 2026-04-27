@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import styled from "styled-components";
 import { useCart } from "@/lib/cart-context";
 import type { Product } from "@/types/product";
@@ -103,6 +104,14 @@ const Footer = styled.div`
   border-top: 1px solid ${({ theme }) => theme.colors.background};
 `;
 
+const AddError = styled.p`
+  margin: 0 0 8px;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  font-weight: 600;
+  color: #b42318;
+`;
+
 const AddButton = styled.button`
   width: 100%;
   padding: 10px 12px;
@@ -137,6 +146,7 @@ function formatPrice(value: number) {
 
 export function ProductCard({ product }: { product: Product }) {
   const { addToCart } = useCart();
+  const [addError, setAddError] = useState<string | null>(null);
   const hasImage = Boolean(product.image);
 
   return (
@@ -154,18 +164,22 @@ export function ProductCard({ product }: { product: Product }) {
           {product.unit ? <Unit>{product.unit}</Unit> : null}
         </Meta>
         <Footer>
+          {addError ? <AddError role="alert">{addError}</AddError> : null}
           <AddButton
             type="button"
-            onClick={() =>
-              addToCart({
+            onClick={() => {
+              const r = addToCart({
                 productId: product.id,
                 name: product.title,
                 price: product.price,
                 quantity: 1,
                 vendorId: product.vendorId,
                 vendorName: product.vendorName,
-              })
-            }
+                locationId: product.locationId,
+              });
+              if (!r.ok) setAddError(r.error);
+              else setAddError(null);
+            }}
           >
             Voeg by mandjie
           </AddButton>

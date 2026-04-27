@@ -1,5 +1,7 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
+import { logApiLocationDebug } from "@/lib/api-location-debug-log";
+import { getLocationFromHeaders } from "@/lib/location";
 import { prisma } from "@/lib/db";
 
 const VERIFY_TOKEN_TTL_MS = 30 * 60 * 1000;
@@ -41,6 +43,16 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+
+    let resolvedLocationId: string | undefined;
+    try {
+      resolvedLocationId = (await getLocationFromHeaders()).id;
+    } catch {
+      resolvedLocationId = undefined;
+    }
+    await logApiLocationDebug("POST /api/verify-phone/confirm", {
+      resolvedLocationId,
+    });
 
     const challenge = await prisma.phoneOtpChallenge.findFirst({
       where: { phone, expiresAt: { gt: new Date() } },

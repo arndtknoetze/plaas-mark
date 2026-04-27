@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
+import { logApiLocationDebug } from "@/lib/api-location-debug-log";
+import { getLocationFromHeaders } from "@/lib/location";
 import { prisma } from "@/lib/db";
+import { isPhoneOtpDisabled } from "@/lib/phone-otp";
 
 type BodyPayload = {
   phone?: unknown;
@@ -32,14 +35,50 @@ export async function POST(request: Request) {
       ? body.verificationToken.trim()
       : "";
 
-  if (!phone || !verificationToken) {
-    return NextResponse.json(
-      { error: "Phone and verificationToken are required." },
-      { status: 400 },
-    );
-  }
-
   try {
+    let resolvedLocationId: string | undefined;
+    try {
+      resolvedLocationId = (await getLocationFromHeaders()).id;
+    } catch {
+      resolvedLocationId = undefined;
+    }
+    await logApiLocationDebug("POST /api/login", {
+      resolvedLocationId,
+      otpBypass: isPhoneOtpDisabled(),
+    });
+
+    if (isPhoneOtpDisabled()) {
+      if (!phone) {
+        return NextResponse.json(
+          { error: "Phone is required." },
+          { status: 400 },
+        );
+      }
+
+      const member = await prisma.member.findUnique({ where: { phone } });
+      if (!member) {
+        return NextResponse.json(
+          {
+            error:
+              "No account found for this phone number. Please register first.",
+          },
+          { status: 403 },
+        );
+      }
+
+      return NextResponse.json({
+        ok: true,
+        session: { name: member.name, phone: member.phone },
+      });
+    }
+
+    if (!phone || !verificationToken) {
+      return NextResponse.json(
+        { error: "Phone and verificationToken are required." },
+        { status: 400 },
+      );
+    }
+
     const session = await prisma.$transaction(async (tx) => {
       const removed = await tx.phoneVerifyToken.deleteMany({
         where: {
@@ -54,22 +93,9 @@ export async function POST(request: Request) {
         );
       }
 
-      const seller = await tx.seller.findUnique({ where: { phone } });
-      if (seller) {
-        return {
-          role: "seller" as const,
-          name: seller.name,
-          phone: seller.phone,
-        };
-      }
-
-      const customer = await tx.customer.findUnique({ where: { phone } });
-      if (customer) {
-        return {
-          role: "customer" as const,
-          name: customer.name,
-          phone: customer.phone,
-        };
+      const member = await tx.member.findUnique({ where: { phone } });
+      if (member) {
+        return { name: member.name, phone: member.phone };
       }
 
       throw new ForbiddenLoginError(

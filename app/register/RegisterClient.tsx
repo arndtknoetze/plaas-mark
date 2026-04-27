@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import { saveStoredCustomer } from "@/lib/customer-storage";
 import { saveStoredSession } from "@/lib/session-storage";
@@ -358,11 +358,36 @@ export function RegisterClient() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<null | { role: Role }>(null);
 
+  const [disablePhoneOtp, setDisablePhoneOtp] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((d: unknown) => {
+        if (
+          cancelled ||
+          !d ||
+          typeof d !== "object" ||
+          (d as { disablePhoneOtp?: unknown }).disablePhoneOtp !== true
+        ) {
+          return;
+        }
+        setDisablePhoneOtp(true);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const phoneNorm = normalizePhone(phone);
   const phoneVerified =
-    Boolean(verificationToken) &&
-    verifiedForPhone !== null &&
-    phoneNorm === verifiedForPhone;
+    disablePhoneOtp && Boolean(phoneNorm)
+      ? true
+      : Boolean(verificationToken) &&
+        verifiedForPhone !== null &&
+        phoneNorm === verifiedForPhone;
 
   const resetVerification = () => {
     setOtpCode("");
@@ -477,7 +502,7 @@ export function RegisterClient() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!phoneVerified || !verificationToken) {
+    if (!disablePhoneOtp && (!phoneVerified || !verificationToken)) {
       setError("Bevestig eers jou foonnommer met die kode.");
       return;
     }
@@ -499,7 +524,7 @@ export function RegisterClient() {
           body: JSON.stringify({
             name: name.trim(),
             phone: phoneNorm,
-            verificationToken,
+            ...(disablePhoneOtp ? {} : { verificationToken }),
           }),
         });
         const data: unknown = await res.json().catch(() => null);
@@ -514,7 +539,7 @@ export function RegisterClient() {
           throw new Error(msg);
         }
         saveStoredCustomer(name.trim(), phoneNorm);
-        saveStoredSession({ role, name: name.trim(), phone: phoneNorm });
+        saveStoredSession({ name: name.trim(), phone: phoneNorm });
         setDone({ role });
         return;
       }
@@ -528,7 +553,7 @@ export function RegisterClient() {
           brandName: brandName.trim(),
           brandColor,
           logoUrl: logoUrl.trim() ? logoUrl.trim() : null,
-          verificationToken,
+          ...(disablePhoneOtp ? {} : { verificationToken }),
         }),
       });
       const data: unknown = await res.json().catch(() => null);
@@ -542,7 +567,7 @@ export function RegisterClient() {
             : "Registrasie het misluk.";
         throw new Error(msg);
       }
-      saveStoredSession({ role, name: name.trim(), phone: phoneNorm });
+      saveStoredSession({ name: name.trim(), phone: phoneNorm });
       if (
         data &&
         typeof data === "object" &&
@@ -585,7 +610,9 @@ export function RegisterClient() {
     <>
       <Title>Registreer</Title>
       <Subtitle>
-        Kies wat jy wil doen. Dit vat minder as ’n minuut op jou foon.
+        {disablePhoneOtp
+          ? "Ontwikkelmodus (geen OTP): kies jou rol en voltooi die vorm."
+          : "Kies wat jy wil doen. Dit vat minder as ’n minuut op jou foon."}
       </Subtitle>
 
       <RoleGrid>
@@ -637,19 +664,26 @@ export function RegisterClient() {
               placeholder="Bv. 082 123 4567"
               required
             />
-            <SecondaryBtn
-              type="button"
-              onClick={() => void sendOtp()}
-              disabled={sendingOtp || !phoneNorm}
-            >
-              {sendingOtp ? "Stuur kode…" : "Stuur verifikasiekode"}
-            </SecondaryBtn>
-            <Hint>
-              Jy kry ’n 6-syfer kode. Ons gebruik dit om jou nommer te bevestig.
-            </Hint>
+            {!disablePhoneOtp ? (
+              <>
+                <SecondaryBtn
+                  type="button"
+                  onClick={() => void sendOtp()}
+                  disabled={sendingOtp || !phoneNorm}
+                >
+                  {sendingOtp ? "Stuur kode…" : "Stuur verifikasiekode"}
+                </SecondaryBtn>
+                <Hint>
+                  Jy kry ’n 6-syfer kode. Ons gebruik dit om jou nommer te
+                  bevestig.
+                </Hint>
+              </>
+            ) : (
+              <Hint>Geen OTP met DISABLE_PHONE_OTP op die bediener nie.</Hint>
+            )}
           </Field>
 
-          {codeSent ? (
+          {!disablePhoneOtp && codeSent ? (
             <Field>
               <Label htmlFor="reg-otp">6-syfer kode</Label>
               <Input

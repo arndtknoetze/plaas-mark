@@ -7,30 +7,32 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Customer {
-  id     String  @id @default(uuid())
-  name   String
-  phone  String  @unique
+model Member {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String   @unique
+  createdAt DateTime @default(now())
+
+  stores Store[]
   orders Order[]
 }
 
-model Seller {
-  id         String   @id @default(cuid())
-  name       String
-  phone      String   @unique
-  brandName  String
-  brandColor String   @default("#2E5E3E")
-  logoUrl    String?  @db.LongText
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+model Location {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
 
   stores Store[]
+  orders Order[]
 }
 
 model Store {
   id          String   @id @default(cuid())
-  sellerId    String
-  seller      Seller   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  memberId    String
+  member      Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  locationId  String
+  location    Location @relation(fields: [locationId], references: [id])
 
   name        String
   slug        String
@@ -49,9 +51,12 @@ model Store {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@unique([sellerId, slug])
-  @@index([sellerId])
+  @@index([memberId])
+  @@index([locationId])
+  @@unique([memberId, slug])
   @@index([slug])
+
+  products Product[]
 }
 
 model Product {
@@ -59,20 +64,27 @@ model Product {
   title      String
   price      Decimal  @db.Decimal(10, 2)
   unit       String?
-  vendorId   String   @default("")
+  vendorId   String
   vendorName String   @default("")
   image      String?  @db.LongText
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  store Store @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 }
 
 model Order {
-  id         String      @id @default(cuid())
-  customerId String
-  customer   Customer    @relation(fields: [customerId], references: [id])
-  notes      String?
-  createdAt  DateTime    @default(now())
-  items      OrderItem[]
+  id          String      @id @default(cuid())
+  memberId    String
+  member      Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  locationId  String
+  location    Location    @relation(fields: [locationId], references: [id])
+  notes       String?
+  createdAt   DateTime    @default(now())
+  items       OrderItem[]
+
+  @@index([memberId])
+  @@index([locationId])
 }
 
 model OrderItem {

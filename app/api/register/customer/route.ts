@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
+import { logApiLocationDebug } from "@/lib/api-location-debug-log";
+import { getLocationFromHeaders } from "@/lib/location";
 import { prisma } from "@/lib/db";
+import { isPhoneOtpDisabled } from "@/lib/phone-otp";
 
 type BodyPayload = {
   name?: unknown;
@@ -40,7 +43,7 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  if (!verificationToken) {
+  if (!isPhoneOtpDisabled() && !verificationToken) {
     return NextResponse.json(
       { error: "Phone verification is required." },
       { status: 400 },
@@ -48,7 +51,27 @@ export async function POST(request: Request) {
   }
 
   try {
-    const customer = await prisma.$transaction(async (tx) => {
+    let resolvedLocationId: string | undefined;
+    try {
+      resolvedLocationId = (await getLocationFromHeaders()).id;
+    } catch {
+      resolvedLocationId = undefined;
+    }
+    await logApiLocationDebug("POST /api/register/customer", {
+      resolvedLocationId,
+      otpBypass: isPhoneOtpDisabled(),
+    });
+
+    if (isPhoneOtpDisabled()) {
+      const member = await prisma.member.upsert({
+        where: { phone },
+        create: { name, phone },
+        update: { name },
+      });
+      return NextResponse.json({ ok: true, memberId: member.id });
+    }
+
+    const member = await prisma.$transaction(async (tx) => {
       const removed = await tx.phoneVerifyToken.deleteMany({
         where: {
           token: verificationToken,
@@ -62,20 +85,20 @@ export async function POST(request: Request) {
         );
       }
 
-      return tx.customer.upsert({
+      return tx.member.upsert({
         where: { phone },
         create: { name, phone },
         update: { name },
       });
     });
 
-    return NextResponse.json({ ok: true, customerId: customer.id });
+    return NextResponse.json({ ok: true, memberId: member.id });
   } catch (err) {
     if (err instanceof ForbiddenRegistrationError) {
       return NextResponse.json({ error: err.message }, { status: 403 });
     }
     return NextResponse.json(
-      { error: "Failed to register customer." },
+      { error: "Failed to register member." },
       { status: 500 },
     );
   }

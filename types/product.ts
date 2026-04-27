@@ -5,5 +5,7 @@ export type Product = {
   unit?: string;
   vendorId: string;
   vendorName: string;
+  /** Store location; cart may only contain one location. */
+  locationId: string;
   image?: string;
 };

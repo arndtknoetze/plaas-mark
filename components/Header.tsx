@@ -11,6 +11,7 @@ import {
   loadStoredSession,
   type StoredSession,
 } from "@/lib/session-storage";
+import type { PublicLocation } from "@/lib/location";
 
 const Bar = styled.header`
   position: sticky;
@@ -36,6 +37,16 @@ const Inner = styled(Container)`
   }
 `;
 
+const BrandCluster = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  flex-shrink: 0;
+`;
+
 const Brand = styled(Link)`
   position: relative;
   display: block;
@@ -53,6 +64,24 @@ const Brand = styled(Link)`
     outline: 2px solid ${({ theme }) => theme.colors.accent};
     outline-offset: 3px;
     border-radius: 4px;
+  }
+`;
+
+const LocationHint = styled.span`
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: ${({ theme }) => theme.colors.textLight};
+  line-height: 1.15;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-left: 2px;
+
+  @media (min-width: 768px) {
+    font-size: 0.75rem;
+    max-width: 260px;
   }
 `;
 
@@ -320,7 +349,7 @@ function MenuIcon() {
   );
 }
 
-export function Header() {
+export function Header({ location }: { location: PublicLocation | null }) {
   const { items } = useCart();
   const count = items.reduce((sum, line) => sum + line.quantity, 0);
   const [session, setSession] = useState<StoredSession | null>(() =>
@@ -363,16 +392,23 @@ export function Header() {
   return (
     <Bar>
       <Inner>
-        <Brand href="/shop">
-          <Image
-            src="/logo.png"
-            alt="PlaasMark"
-            fill
-            sizes="(max-width: 767px) 198px, 228px"
-            priority
-            style={{ objectFit: "contain", objectPosition: "left center" }}
-          />
-        </Brand>
+        <BrandCluster>
+          <Brand href="/shop">
+            <Image
+              src="/logo.png"
+              alt="PlaasMark"
+              fill
+              sizes="(max-width: 767px) 198px, 228px"
+              priority
+              style={{ objectFit: "contain", objectPosition: "left center" }}
+            />
+          </Brand>
+          {location?.name ? (
+            <LocationHint aria-label={`PlaasMark ${location.name}`}>
+              {location.name}
+            </LocationHint>
+          ) : null}
+        </BrandCluster>
         <Actions>
           {!session ? (
             <RegisterLink href="/register">Registreer</RegisterLink>

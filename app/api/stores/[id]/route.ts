@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { logApiLocationDebug } from "@/lib/api-location-debug-log";
 import { prisma } from "@/lib/db";
+import { getLocationFromHeaders } from "@/lib/location";
 import { slugify } from "@/lib/slug";
 
 function normalizePhone(input: unknown): string {
@@ -12,17 +14,29 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const location = await getLocationFromHeaders();
     const { id } = await params;
-    const store = await prisma.store.findUnique({
-      where: { id },
-      include: { seller: { select: { name: true, phone: true } } },
+    const store = await prisma.store.findFirst({
+      where: {
+        id,
+        locationId: location.id,
+        isActive: true,
+      },
+      include: {
+        member: { select: { name: true, phone: true } },
+      },
     });
     if (!store)
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    await logApiLocationDebug("GET /api/stores/[id]", {
+      resolvedLocationId: location.id,
+      storeId: store.id,
+      storeLocationId: store.locationId,
+    });
     return NextResponse.json({
       store: {
         id: store.id,
-        sellerId: store.sellerId,
+        memberId: store.memberId,
         name: store.name,
         slug: store.slug,
         isActive: store.isActive,
@@ -35,7 +49,7 @@ export async function GET(
         facebook: store.facebook,
         website: store.website,
         hoursText: store.hoursText,
-        seller: store.seller,
+        member: store.member,
       },
     });
   } catch {
@@ -65,12 +79,25 @@ export async function PATCH(
   const { id } = await params;
   const store = await prisma.store.findUnique({
     where: { id },
-    include: { seller: { select: { phone: true } } },
+    include: { member: { select: { phone: true } } },
   });
   if (!store) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (store.seller.phone !== phone) {
+  if (!store.member || store.member.phone !== phone) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+
+  let resolvedLocationId: string | undefined;
+  try {
+    resolvedLocationId = (await getLocationFromHeaders()).id;
+  } catch {
+    resolvedLocationId = undefined;
+  }
+
+  await logApiLocationDebug("PATCH /api/stores/[id]", {
+    resolvedLocationId,
+    storeId: store.id,
+    storeLocationId: store.locationId,
+  });
 
   const name = typeof body.name === "string" ? body.name.trim() : null;
   const isActive = typeof body.isActive === "boolean" ? body.isActive : null;

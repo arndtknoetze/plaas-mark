@@ -6,6 +6,7 @@ import { Container } from "@/components/Container";
 import { PageWrapper } from "@/components/PageWrapper";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import type { PublicLocation } from "@/lib/location";
 
 const Header = dynamic(
   () => import("@/components/Header").then((m) => m.Header),
@@ -23,10 +24,16 @@ const Main = styled.main`
   width: 100%;
 `;
 
-export function Shell({ children }: { children: React.ReactNode }) {
+export function Shell({
+  children,
+  location,
+}: {
+  children: React.ReactNode;
+  location: PublicLocation | null;
+}) {
   return (
     <Root>
-      <Header />
+      <Header location={location} />
       <ServiceWorkerRegister />
       <Main>
         <PageWrapper>

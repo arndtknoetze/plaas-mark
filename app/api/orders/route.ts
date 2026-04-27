@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
+import { logApiLocationDebug } from "@/lib/api-location-debug-log";
 import { prisma } from "@/lib/db";
+import { getLocationFromHeaders } from "@/lib/location";
+import { wherePublicStoresInLocation } from "@/lib/stores-scope";
 import { orderPostRateLimitResponse } from "@/lib/order-post-rate-limit";
+import { isPhoneOtpDisabled } from "@/lib/phone-otp";
 import type { CartItem } from "@/types/cart";
 
 export async function GET(request: Request) {
@@ -17,21 +21,41 @@ export async function GET(request: Request) {
       );
     }
 
-    const customer = await prisma.customer.findUnique({
+    let location;
+    try {
+      location = await getLocationFromHeaders();
+    } catch {
+      return NextResponse.json(
+        { error: "Location could not be resolved. Try again later." },
+        { status: 500 },
+      );
+    }
+
+    const member = await prisma.member.findUnique({
       where: { phone },
       include: {
         orders: {
+          where: { locationId: location.id },
           orderBy: { createdAt: "desc" },
           include: { items: { orderBy: { id: "asc" } } },
         },
       },
     });
 
-    if (!customer) {
+    if (!member) {
+      await logApiLocationDebug("GET /api/orders", {
+        resolvedLocationId: location.id,
+        orderLocationIds: [] as string[],
+      });
       return NextResponse.json({ orders: [] as const });
     }
 
-    const orders = customer.orders.map((order) => ({
+    await logApiLocationDebug("GET /api/orders", {
+      resolvedLocationId: location.id,
+      orderLocationIds: [...new Set(member.orders.map((o) => o.locationId))],
+    });
+
+    const orders = member.orders.map((order) => ({
       id: order.id,
       createdAt: order.createdAt.toISOString(),
       notes: order.notes,
@@ -84,7 +108,9 @@ function isCartItem(value: unknown): value is CartItem {
     Number.isInteger(o.quantity) &&
     o.quantity >= 1 &&
     typeof o.vendorId === "string" &&
-    typeof o.vendorName === "string"
+    typeof o.vendorName === "string" &&
+    typeof o.locationId === "string" &&
+    o.locationId.length > 0
   );
 }
 
@@ -124,7 +150,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "Each item must include productId, name, price, quantity, vendorId, and vendorName.",
+          "Each item must include productId, name, price, quantity, vendorId, vendorName, and locationId.",
       },
       { status: 400 },
     );
@@ -132,11 +158,113 @@ export async function POST(request: Request) {
 
   const items = body.items as CartItem[];
 
+  let location;
+  try {
+    location = await getLocationFromHeaders();
+  } catch {
+    return NextResponse.json(
+      { error: "Location could not be resolved. Try again later." },
+      { status: 500 },
+    );
+  }
+
+  const cartLocationIds = [...new Set(items.map((item) => item.locationId))];
+  if (cartLocationIds.length !== 1) {
+    return NextResponse.json(
+      {
+        error:
+          "Alle lyne moet dieselfde gebied wees. Plaas een bestelling per dorp.",
+      },
+      { status: 400 },
+    );
+  }
+  if (cartLocationIds[0] !== location.id) {
+    return NextResponse.json(
+      {
+        error:
+          "Jou mandjie stem nie met hierdie gebied ooreen nie. Maak dit leeg of gebruik die regte gebied.",
+      },
+      { status: 400 },
+    );
+  }
+
+  const productIds = [...new Set(items.map((item) => item.productId))];
+  const catalogueProducts = await prisma.product.findMany({
+    where: {
+      id: { in: productIds },
+      store: wherePublicStoresInLocation(location.id),
+    },
+    select: {
+      id: true,
+      vendorId: true,
+      store: { select: { id: true, locationId: true } },
+    },
+  });
+
+  if (catalogueProducts.length !== productIds.length) {
+    return NextResponse.json(
+      {
+        error:
+          "One or more products are not available in this area. Refresh and update your cart.",
+      },
+      { status: 400 },
+    );
+  }
+
+  const distinctStoreLocations = new Set(
+    catalogueProducts.map((p) => p.store.locationId),
+  );
+  if (
+    distinctStoreLocations.size !== 1 ||
+    !distinctStoreLocations.has(location.id)
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Alle items moet dieselfde gebied wees (winkels in hierdie plek).",
+      },
+      { status: 400 },
+    );
+  }
+
+  const productById = new Map(catalogueProducts.map((p) => [p.id, p]));
+  for (const item of items) {
+    const row = productById.get(item.productId);
+    if (!row || row.vendorId !== item.vendorId) {
+      return NextResponse.json(
+        {
+          error:
+            "Cart items do not match catalogue products for this area. Refresh and try again.",
+        },
+        { status: 400 },
+      );
+    }
+    if (row.store.locationId !== item.locationId) {
+      return NextResponse.json(
+        {
+          error:
+            "Alle items moet by dieselfde gebied se winkels hoort. Verfris jou mandjie.",
+        },
+        { status: 400 },
+      );
+    }
+  }
+
+  await logApiLocationDebug("POST /api/orders (validated)", {
+    resolvedLocationId: location.id,
+    cartLineLocationIds: [...new Set(items.map((i) => i.locationId))],
+    productStoreLocationIds: [
+      ...new Set(catalogueProducts.map((p) => p.store.locationId)),
+    ],
+  });
+
   const verificationToken =
     typeof body.verificationToken === "string"
       ? body.verificationToken.trim()
       : "";
-  if (!verificationToken) {
+
+  const otpBypass = isPhoneOtpDisabled();
+  if (!otpBypass && !verificationToken) {
     return NextResponse.json(
       { error: "Phone verification is required before placing an order." },
       { status: 400 },
@@ -148,31 +276,32 @@ export async function POST(request: Request) {
     if (limited) return limited;
 
     const order = await prisma.$transaction(async (tx) => {
-      const removed = await tx.phoneVerifyToken.deleteMany({
-        where: {
-          token: verificationToken,
-          phone,
-          expiresAt: { gt: new Date() },
-        },
-      });
-      if (removed.count !== 1) {
-        throw new ForbiddenOrderError(
-          "Invalid or expired phone verification. Request a new code and verify again.",
-        );
+      if (!otpBypass) {
+        const removed = await tx.phoneVerifyToken.deleteMany({
+          where: {
+            token: verificationToken,
+            phone,
+            expiresAt: { gt: new Date() },
+          },
+        });
+        if (removed.count !== 1) {
+          throw new ForbiddenOrderError(
+            "Invalid or expired phone verification. Request a new code and verify again.",
+          );
+        }
       }
 
-      const existingCustomer = await tx.customer.findUnique({
+      const member = await tx.member.upsert({
         where: { phone },
+        create: { name, phone },
+        update: { name },
+        select: { id: true },
       });
-      const customerRecord =
-        existingCustomer ??
-        (await tx.customer.create({
-          data: { name, phone },
-        }));
 
       return tx.order.create({
         data: {
-          customerId: customerRecord.id,
+          memberId: member.id,
+          locationId: location.id,
           notes,
           items: {
             create: items.map((item) => ({
@@ -186,6 +315,12 @@ export async function POST(request: Request) {
           },
         },
       });
+    });
+
+    await logApiLocationDebug("POST /api/orders (created)", {
+      orderId: order.id,
+      orderLocationId: order.locationId,
+      otpBypass,
     });
 
     return NextResponse.json({ orderId: order.id });

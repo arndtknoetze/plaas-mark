@@ -28,7 +28,7 @@ export async function orderPostRateLimitResponse(
   const recentForPhone = await prisma.order.count({
     where: {
       createdAt: { gte: hourAgo },
-      customer: { phone },
+      member: { phone },
     },
   });
   if (recentForPhone >= MAX_ORDERS_PER_PHONE_PER_HOUR) {

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { ProductCard } from "@/components/ProductCard";
-import { slugify } from "@/lib/slug";
 import type { Product } from "@/types/product";
 
 const PageTitle = styled.h1`
@@ -49,9 +48,16 @@ const Filters = styled.div`
   gap: 10px;
 
   @media (min-width: 768px) {
-    grid-template-columns: 1.2fr 0.8fr;
+    grid-template-columns: 1.2fr 1fr;
     gap: 12px;
   }
+`;
+
+const AreaHint = styled.p`
+  margin: -10px 0 18px;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: ${({ theme }) => theme.colors.textLight};
 `;
 
 const Field = styled.div`
@@ -118,38 +124,84 @@ const ShopLink = styled(Link)`
   }
 `;
 
+type StoreOption = { id: string; name: string; slug: string };
+
+function parseStoresPayload(body: unknown): StoreOption[] {
+  if (!body || typeof body !== "object") return [];
+  const raw = (body as { stores?: unknown }).stores;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (x): x is StoreOption =>
+      Boolean(x) &&
+      typeof x === "object" &&
+      typeof (x as StoreOption).id === "string" &&
+      typeof (x as StoreOption).name === "string" &&
+      typeof (x as StoreOption).slug === "string",
+  );
+}
+
 export default function ShopPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [stores, setStores] = useState<StoreOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [store, setStore] = useState<string>("all");
+  const [areaLabel, setAreaLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/location");
+        const body: unknown = await res.json().catch(() => null);
+        if (!res.ok || !body || typeof body !== "object") return;
+        const name = (body as { name?: unknown }).name;
+        if (typeof name === "string" && !cancelled) setAreaLabel(name);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       try {
-        const res = await fetch("/api/products");
-        const body: unknown = await res.json().catch(() => null);
+        setLoading(true);
+        const [prodRes, storeRes] = await Promise.all([
+          fetch("/api/products"),
+          fetch("/api/stores"),
+        ]);
 
-        if (!res.ok) {
+        const prodBody: unknown = await prodRes.json().catch(() => null);
+        const storeBody: unknown = await storeRes.json().catch(() => null);
+
+        if (!prodRes.ok) {
           const msg =
-            body &&
-            typeof body === "object" &&
-            "error" in body &&
-            typeof (body as { error: unknown }).error === "string"
-              ? (body as { error: string }).error
+            prodBody &&
+            typeof prodBody === "object" &&
+            "error" in prodBody &&
+            typeof (prodBody as { error: unknown }).error === "string"
+              ? (prodBody as { error: string }).error
               : "Kon nie produkte laai nie.";
           throw new Error(msg);
         }
 
-        if (!Array.isArray(body)) {
-          throw new Error("Ongeldige antwoord.");
+        if (!Array.isArray(prodBody)) {
+          throw new Error("Ongeldige antwoord (produkte).");
         }
 
+        const parsedStores = storeRes.ok ? parseStoresPayload(storeBody) : [];
+
         if (!cancelled) {
-          setProducts(body as Product[]);
+          setProducts(prodBody as Product[]);
+          setStores(parsedStores);
+          setError(null);
         }
       } catch (e) {
         if (!cancelled) {
@@ -167,23 +219,6 @@ export default function ShopPage() {
     };
   }, []);
 
-  const vendors = useMemo(() => {
-    const map = new Map<string, { id: string; name: string; slug: string }>();
-    for (const p of products) {
-      const name = p.vendorName?.trim();
-      const id = (p.vendorId ?? "").trim();
-      if (!id) continue;
-      if (!name) continue;
-      const slug = slugify(name);
-      if (!slug) continue;
-      const key = `${slug}--${id}`;
-      if (!map.has(key)) map.set(key, { id, name, slug });
-    }
-    return Array.from(map.values()).sort((a, b) =>
-      a.name.localeCompare(b.name),
-    );
-  }, [products]);
-
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return products.filter((p) => {
@@ -196,15 +231,20 @@ export default function ShopPage() {
     });
   }, [products, query, store]);
 
+  const hasStoresOrProducts = stores.length > 0 || products.length > 0;
+
   return (
     <>
       <PageTitle>Winkel</PageTitle>
+      {areaLabel ? <AreaHint>Gebied: {areaLabel}</AreaHint> : null}
       {loading ? (
-        <Message>Laai produkte…</Message>
+        <Message>Laai…</Message>
       ) : error ? (
         <Message role="alert">{error}</Message>
-      ) : products.length === 0 ? (
-        <Message>Geen produkte beskikbaar nie.</Message>
+      ) : !hasStoresOrProducts ? (
+        <Message>
+          Nog geen aktiewe winkels of produkte in hierdie gebied nie.
+        </Message>
       ) : (
         <>
           <Filters>
@@ -225,7 +265,7 @@ export default function ShopPage() {
                 onChange={(e) => setStore(e.target.value)}
               >
                 <option value="all">Alle winkels</option>
-                {vendors.map((v) => (
+                {stores.map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.name}
                   </option>
@@ -235,7 +275,7 @@ export default function ShopPage() {
                 <Message style={{ marginTop: 6 }}>
                   Bekyk winkelblad:{" "}
                   {(() => {
-                    const v = vendors.find((x) => x.id === store);
+                    const v = stores.find((x) => x.id === store);
                     return v ? (
                       <ShopLink
                         href={`/shop/${v.slug}--${encodeURIComponent(v.id)}`}
@@ -249,7 +289,9 @@ export default function ShopPage() {
             </Field>
           </Filters>
 
-          {filtered.length === 0 ? (
+          {products.length === 0 ? (
+            <Message>Geen produkte beskikbaar nie.</Message>
+          ) : filtered.length === 0 ? (
             <Message>Geen produkte pas by jou filters nie.</Message>
           ) : (
             <Grid>

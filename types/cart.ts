@@ -5,4 +5,6 @@ export type CartItem = {
   quantity: number;
   vendorId: string;
   vendorName: string;
+  /** Same for every line in the mandjie (single-location cart). */
+  locationId: string;
 };

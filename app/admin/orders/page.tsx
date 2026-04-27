@@ -31,7 +31,7 @@ export default async function AdminOrdersPage() {
     orderBy: { createdAt: "desc" },
     take: 50,
     include: {
-      customer: { select: { name: true, phone: true } },
+      member: { select: { name: true, phone: true } },
       items: { orderBy: { id: "asc" } },
     },
   });
@@ -117,10 +117,10 @@ export default async function AdminOrdersPage() {
                 >
                   <div>
                     <div style={{ fontWeight: 700, fontSize: "0.95rem" }}>
-                      {order.customer.name}
+                      {order.member.name}
                     </div>
                     <div style={{ fontSize: "0.875rem", color: colors.muted }}>
-                      {order.customer.phone}
+                      {order.member.phone}
                     </div>
                   </div>
                   <div style={{ textAlign: "right" }}>

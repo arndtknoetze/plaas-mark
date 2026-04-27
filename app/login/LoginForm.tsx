@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import styled from "styled-components";
 import { saveStoredSession } from "@/lib/session-storage";
 
@@ -148,6 +148,7 @@ function normalizePhone(v: string) {
 
 export function LoginForm() {
   const router = useRouter();
+  const [disablePhoneOtp, setDisablePhoneOtp] = useState(false);
   const [phone, setPhone] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [codeSent, setCodeSent] = useState(false);
@@ -157,7 +158,71 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [devOtpHint, setDevOtpHint] = useState<string | null>(null);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((d: unknown) => {
+        if (cancelled || !d || typeof d !== "object") return;
+        if (
+          "disablePhoneOtp" in d &&
+          (d as { disablePhoneOtp?: unknown }).disablePhoneOtp === true
+        ) {
+          setDisablePhoneOtp(true);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const phoneNorm = normalizePhone(phone);
+
+  const loginDirectNoOtp = async () => {
+    setError(null);
+    if (!phoneNorm) {
+      setError("Vul eers jou foonnommer in.");
+      return;
+    }
+    setLoggingIn(true);
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phoneNorm }),
+      });
+      const data: unknown = await res.json().catch(() => null);
+      if (!res.ok) {
+        const msg =
+          data &&
+          typeof data === "object" &&
+          "error" in data &&
+          typeof (data as { error: unknown }).error === "string"
+            ? (data as { error: string }).error
+            : "Kon nie aanmeld nie.";
+        throw new Error(msg);
+      }
+      const session = (() => {
+        if (!data || typeof data !== "object" || !("session" in data))
+          return null;
+        const s = (data as { session?: unknown }).session;
+        if (!s || typeof s !== "object") return null;
+        const o = s as Record<string, unknown>;
+        if (typeof o.name !== "string" || typeof o.phone !== "string")
+          return null;
+        return { name: o.name, phone: o.phone } as const;
+      })();
+      if (!session) throw new Error("Ongeldige antwoord van bediener.");
+
+      saveStoredSession(session);
+      router.push("/profile");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Onbekende fout.");
+    } finally {
+      setLoggingIn(false);
+    }
+  };
 
   const sendOtp = async () => {
     setError(null);
@@ -261,10 +326,9 @@ export function LoginForm() {
         const s = (data as { session?: unknown }).session;
         if (!s || typeof s !== "object") return null;
         const o = s as Record<string, unknown>;
-        if (o.role !== "customer" && o.role !== "seller") return null;
         if (typeof o.name !== "string" || typeof o.phone !== "string")
           return null;
-        return { role: o.role, name: o.name, phone: o.phone } as const;
+        return { name: o.name, phone: o.phone } as const;
       })();
       if (!session) throw new Error("Ongeldige antwoord van bediener.");
 
@@ -282,13 +346,16 @@ export function LoginForm() {
     <>
       <Title>Meld aan</Title>
       <Subtitle>
-        Gebruik jou foonnommer. Ons stuur ’n 6-syfer kode om te bevestig.
+        {disablePhoneOtp
+          ? "Ontwikkelmodus: geen OTP met DISABLE_PHONE_OTP op die bediener nie."
+          : "Gebruik jou foonnommer. Ons stuur ’n 6-syfer kode om te bevestig."}
       </Subtitle>
       <Card>
         <Form
           onSubmit={(e) => {
             e.preventDefault();
-            void login();
+            if (disablePhoneOtp) void loginDirectNoOtp();
+            else void login();
           }}
         >
           {error ? <ErrorMsg role="alert">{error}</ErrorMsg> : null}
@@ -309,23 +376,29 @@ export function LoginForm() {
               placeholder="Bv. 082 123 4567"
               required
             />
-            <SecondaryBtn
-              type="button"
-              onClick={() => void sendOtp()}
-              disabled={sending || !phoneNorm}
-            >
-              {sending ? "Stuur kode…" : "Stuur kode"}
-            </SecondaryBtn>
-            {devOtpHint ? (
-              <Hint>
-                Ontwikkeling: jou kode is <strong>{devOtpHint}</strong>
-              </Hint>
+            {!disablePhoneOtp ? (
+              <>
+                <SecondaryBtn
+                  type="button"
+                  onClick={() => void sendOtp()}
+                  disabled={sending || !phoneNorm}
+                >
+                  {sending ? "Stuur kode…" : "Stuur kode"}
+                </SecondaryBtn>
+                {devOtpHint ? (
+                  <Hint>
+                    Ontwikkeling: jou kode is <strong>{devOtpHint}</strong>
+                  </Hint>
+                ) : (
+                  <Hint>Jy sal ’n SMS (of dev-kode) kry met jou OTP.</Hint>
+                )}
+              </>
             ) : (
-              <Hint>Jy sal ’n SMS (of dev-kode) kry met jou OTP.</Hint>
+              <Hint>Vul jou nommer in en meld aan.</Hint>
             )}
           </Field>
 
-          {codeSent ? (
+          {!disablePhoneOtp && codeSent ? (
             <Field>
               <Label htmlFor="login-otp">6-syfer kode</Label>
               <Input
@@ -345,10 +418,12 @@ export function LoginForm() {
           <PrimaryBtn
             type="submit"
             disabled={
-              !codeSent ||
-              verifying ||
-              loggingIn ||
-              otpCode.replace(/\D/g, "").length !== 6
+              disablePhoneOtp
+                ? !phoneNorm || loggingIn
+                : !codeSent ||
+                  verifying ||
+                  loggingIn ||
+                  otpCode.replace(/\D/g, "").length !== 6
             }
           >
             {verifying || loggingIn ? "Besig…" : "Meld aan"}

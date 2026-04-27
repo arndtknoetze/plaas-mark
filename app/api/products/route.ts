@@ -1,10 +1,21 @@
 import { NextResponse } from "next/server";
+import { logApiLocationDebug } from "@/lib/api-location-debug-log";
+import { getLocationFromHeaders } from "@/lib/location";
+import { findProductsForLocationCatalogue } from "@/lib/products-scope";
 import { prisma } from "@/lib/db";
 
 export async function GET() {
   try {
-    const rows = await prisma.product.findMany({
-      orderBy: { createdAt: "desc" },
+    const location = await getLocationFromHeaders();
+
+    const rows = await findProductsForLocationCatalogue(location.id);
+
+    await logApiLocationDebug("GET /api/products", {
+      resolvedLocationId: location.id,
+      productStoreLocationIds: [
+        ...new Set(rows.map((r) => r.store.locationId)),
+      ],
+      productCount: rows.length,
     });
 
     const products = rows.map((p) => ({
@@ -14,6 +25,7 @@ export async function GET() {
       unit: p.unit ?? undefined,
       vendorId: p.vendorId,
       vendorName: p.vendorName,
+      locationId: p.store.locationId,
       image: p.image ?? undefined,
     }));
 
@@ -74,19 +86,37 @@ export async function POST(request: Request) {
   }
 
   try {
+    const location = await getLocationFromHeaders();
+
     const result = await prisma.$transaction(async (tx) => {
-      const seller = await tx.seller.findUnique({ where: { phone } });
-      if (!seller) {
+      const member = await tx.member.findUnique({ where: { phone } });
+      if (!member) {
         return {
           status: 403 as const,
-          payload: { error: "Seller not found." },
+          payload: { error: "Member not found." },
         };
       }
 
       const store = await tx.store.findUnique({ where: { id: storeId } });
-      if (!store || store.sellerId !== seller.id) {
+      if (!store || store.memberId !== member.id) {
         return { status: 403 as const, payload: { error: "Forbidden." } };
       }
+
+      if (store.locationId !== location.id) {
+        return {
+          status: 403 as const,
+          payload: {
+            error:
+              "This shop is not in your current area. Open the correct area subdomain and try again.",
+          },
+        };
+      }
+
+      await logApiLocationDebug("POST /api/products", {
+        resolvedLocationId: location.id,
+        storeId: store.id,
+        storeLocationId: store.locationId,
+      });
 
       const product = await tx.product.create({
         data: {

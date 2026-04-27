@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Shell } from "@/components/Shell";
+import { getPublicLocationOrNull } from "@/lib/location";
 import { StyledComponentsRegistry } from "@/lib/styled-registry";
 import { theme } from "@/styles/theme";
 
@@ -24,16 +25,18 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const location = await getPublicLocationOrNull();
+
   return (
     <html lang="en">
       <body style={{ backgroundColor: theme.colors.background }}>
         <StyledComponentsRegistry>
-          <Shell>{children}</Shell>
+          <Shell location={location}>{children}</Shell>
         </StyledComponentsRegistry>
       </body>
     </html>

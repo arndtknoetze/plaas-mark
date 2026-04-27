@@ -336,6 +336,12 @@ const PrimaryBtn = styled.button`
   }
 `;
 
+const CtaCard = styled(Card)`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+`;
+
 export default function ProfilePage() {
   // Hydration-safe: render a stable “logged out” view first, then load localStorage after mount.
   const [hydrated, setHydrated] = useState(false);
@@ -368,7 +374,7 @@ export default function ProfilePage() {
   }, []);
 
   useEffect(() => {
-    if (!hydrated || !session || session.role !== "seller") return;
+    if (!hydrated || !session) return;
     let cancelled = false;
     (async () => {
       setStoreError(null);
@@ -435,10 +441,12 @@ export default function ProfilePage() {
     );
   }
 
-  if (session.role === "seller") {
+  const isSeller = stores.length > 0;
+
+  if (isSeller) {
     return (
       <>
-        <Title>Seller profiel</Title>
+        <Title>Profiel</Title>
         <Subtitle>Bestuur jou winkels en voltooi jou store setup.</Subtitle>
 
         <SectionTitle>Jou winkels</SectionTitle>
@@ -921,14 +929,8 @@ export default function ProfilePage() {
   return (
     <>
       <Title>Profiel</Title>
-      <Subtitle>
-        Hier is jou huidige sessie (tydelik, sonder volle auth).
-      </Subtitle>
+      <Subtitle>Jou besonderhede is gestoor op hierdie toestel.</Subtitle>
       <Card>
-        <Row>
-          <Key>Rol</Key>
-          <Value>{session.role}</Value>
-        </Row>
         <Row>
           <Key>Naam</Key>
           <Value>{session.name}</Value>
@@ -938,6 +940,22 @@ export default function ProfilePage() {
           <Value>{session.phone}</Value>
         </Row>
       </Card>
+
+      <SectionTitle>Jou winkel</SectionTitle>
+      {loadingStores ? <Subtitle>Laai winkels…</Subtitle> : null}
+      {storeError ? <Subtitle role="alert">{storeError}</Subtitle> : null}
+      {!loadingStores && stores.length === 0 ? (
+        <CtaCard>
+          <Subtitle style={{ margin: 0 }}>
+            Jy het nog geen winkels nie. Skep jou eerste winkel om produkte te
+            lys en bestellings te ontvang.
+          </Subtitle>
+          <ShopLink href="/register?role=seller">
+            Skep jou eerste winkel
+          </ShopLink>
+        </CtaCard>
+      ) : null}
+
       <Actions>
         <ShopLink href="/shop">Winkel</ShopLink>
         <Btn

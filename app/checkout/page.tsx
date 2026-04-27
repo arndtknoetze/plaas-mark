@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import styled from "styled-components";
 import { useCart } from "@/lib/cart-context";
 import { loadStoredCustomer, saveStoredCustomer } from "@/lib/customer-storage";
@@ -359,12 +359,36 @@ export default function CheckoutPage() {
   );
   const [verifiedForPhone, setVerifiedForPhone] = useState<string | null>(null);
   const [devOtpHint, setDevOtpHint] = useState<string | null>(null);
+  const [disablePhoneOtp, setDisablePhoneOtp] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((d: unknown) => {
+        if (
+          cancelled ||
+          !d ||
+          typeof d !== "object" ||
+          (d as { disablePhoneOtp?: unknown }).disablePhoneOtp !== true
+        ) {
+          return;
+        }
+        setDisablePhoneOtp(true);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const phoneNorm = normalizePhone(phone);
   const phoneVerified =
-    Boolean(verificationToken) &&
-    verifiedForPhone !== null &&
-    phoneNorm === verifiedForPhone;
+    disablePhoneOtp && Boolean(phoneNorm)
+      ? true
+      : Boolean(verificationToken) &&
+        verifiedForPhone !== null &&
+        phoneNorm === verifiedForPhone;
 
   const resetPhoneVerification = () => {
     setVerificationToken(null);
@@ -466,24 +490,28 @@ export default function CheckoutPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!phoneVerified || !verificationToken) {
+    if (!disablePhoneOtp && (!phoneVerified || !verificationToken)) {
       setError("Bevestig eers jou foonnommer met die kode.");
       return;
     }
     setSubmitting(true);
     try {
+      const payload: Record<string, unknown> = {
+        customer: {
+          name: name.trim(),
+          phone: phoneNorm,
+          ...(notes.trim() ? { notes: notes.trim() } : {}),
+        },
+        items,
+      };
+      if (!disablePhoneOtp && verificationToken) {
+        payload.verificationToken = verificationToken;
+      }
+
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          verificationToken,
-          customer: {
-            name: name.trim(),
-            phone: phoneNorm,
-            ...(notes.trim() ? { notes: notes.trim() } : {}),
-          },
-          items,
-        }),
+        body: JSON.stringify(payload),
       });
       const data: unknown = await res.json().catch(() => null);
       if (!res.ok) {
@@ -549,7 +577,11 @@ export default function CheckoutPage() {
     <>
       <BackLink href="/cart">← Terug na mandjie</BackLink>
       <Title>Betaal</Title>
-      <Subtitle>Kontroleer jou items en vul jou besonderhede in.</Subtitle>
+      <Subtitle>
+        {disablePhoneOtp
+          ? "Ontwikkelmodus: geen OTP — vul kontakbesonderhede in en plaas bestelling."
+          : "Kontroleer jou items en vul jou besonderhede in."}
+      </Subtitle>
 
       <Section>
         <SectionTitle>Jou bestelling</SectionTitle>
@@ -599,32 +631,40 @@ export default function CheckoutPage() {
               onChange={(e) => handlePhoneChange(e.target.value)}
               placeholder="Bv. 082 123 4567"
             />
-            <SecondaryBtn
-              type="button"
-              onClick={() => void sendOtp()}
-              disabled={sendingOtp || !phoneNorm}
-            >
-              {sendingOtp ? "Stuur kode…" : "Stuur verifikasiekode"}
-            </SecondaryBtn>
-            {devOtpHint ? (
-              <DevCodeHint>
-                Ontwikkeling: jou kode is <strong>{devOtpHint}</strong> (stel{" "}
-                <code>VERIFICATION_OTP_IN_RESPONSE=true</code> in produksie
-                nooit aan nie).
-              </DevCodeHint>
-            ) : codeSent ? (
-              <HintText>
-                Voer die 6-syfer kode in wat by hierdie nommer gestuur is (of
-                gebruik die ontwikkelaarwenk hierbo).
-              </HintText>
+            {!disablePhoneOtp ? (
+              <>
+                <SecondaryBtn
+                  type="button"
+                  onClick={() => void sendOtp()}
+                  disabled={sendingOtp || !phoneNorm}
+                >
+                  {sendingOtp ? "Stuur kode…" : "Stuur verifikasiekode"}
+                </SecondaryBtn>
+                {devOtpHint ? (
+                  <DevCodeHint>
+                    Ontwikkeling: jou kode is <strong>{devOtpHint}</strong>{" "}
+                    (stel <code>VERIFICATION_OTP_IN_RESPONSE=true</code> in
+                    produksie nooit aan nie).
+                  </DevCodeHint>
+                ) : codeSent ? (
+                  <HintText>
+                    Voer die 6-syfer kode in wat by hierdie nommer gestuur is
+                    (of gebruik die ontwikkelaarwenk hierbo).
+                  </HintText>
+                ) : (
+                  <HintText>
+                    Jy moet eers &apos;n kode aanvra en dit bevestig om te kan
+                    betaal.
+                  </HintText>
+                )}
+              </>
             ) : (
               <HintText>
-                Jy moet eers &apos;n kode aanvra en dit bevestig om te kan
-                betaal.
+                Geen OTP met <code>DISABLE_PHONE_OTP</code> op die bediener nie.
               </HintText>
             )}
           </Field>
-          {codeSent ? (
+          {!disablePhoneOtp && codeSent ? (
             <Field>
               <Label htmlFor="checkout-otp">6-syfer kode</Label>
               <Input
@@ -650,9 +690,13 @@ export default function CheckoutPage() {
               </SecondaryBtn>
             </Field>
           ) : null}
-          {phoneVerified ? (
+          {!disablePhoneOtp && phoneVerified ? (
             <VerifiedLine>
               ✓ Foonnommer bevestig. Jy kan nou bestelling plaas.
+            </VerifiedLine>
+          ) : disablePhoneOtp && phoneNorm ? (
+            <VerifiedLine>
+              ✓ Ontwikkelmodus: geen OTP — kontaknommer ingevul.
             </VerifiedLine>
           ) : null}
           <Field>

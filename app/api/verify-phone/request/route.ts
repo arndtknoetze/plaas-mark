@@ -1,5 +1,7 @@
 import { randomInt } from "node:crypto";
 import { NextResponse } from "next/server";
+import { logApiLocationDebug } from "@/lib/api-location-debug-log";
+import { getLocationFromHeaders } from "@/lib/location";
 import { prisma } from "@/lib/db";
 
 const OTP_TTL_MS = 10 * 60 * 1000;
@@ -30,6 +32,16 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+
+    let resolvedLocationId: string | undefined;
+    try {
+      resolvedLocationId = (await getLocationFromHeaders()).id;
+    } catch {
+      resolvedLocationId = undefined;
+    }
+    await logApiLocationDebug("POST /api/verify-phone/request", {
+      resolvedLocationId,
+    });
 
     const code = generateSixDigitCode();
     const expiresAt = new Date(Date.now() + OTP_TTL_MS);
