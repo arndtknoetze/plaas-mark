@@ -161,6 +161,64 @@ const ShopHint = styled(Link)`
   }
 `;
 
+const CtaRow = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 22px auto 0;
+  width: min(440px, 100%);
+`;
+
+const PrimaryCta = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 54px;
+  padding: 0 18px;
+  border-radius: 14px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+  background: ${({ theme }) => theme.colors.primary};
+  text-decoration: none;
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.06),
+    0 8px 18px rgba(46, 94, 62, 0.18);
+
+  &:hover {
+    background: ${({ theme }) => theme.colors.secondary};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.colors.accent};
+    outline-offset: 3px;
+  }
+`;
+
+const SecondaryCta = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 0 18px;
+  border-radius: 14px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: ${({ theme }) => theme.colors.primary};
+  background: rgba(46, 94, 62, 0.06);
+  border: 1px solid rgba(46, 94, 62, 0.18);
+  text-decoration: none;
+
+  &:hover {
+    background: rgba(46, 94, 62, 0.1);
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.colors.accent};
+    outline-offset: 3px;
+  }
+`;
+
 export function ComingSoon() {
   return (
     <Root>
@@ -171,13 +229,13 @@ export function ComingSoon() {
           <Image
             src="/logo.png"
             alt="PlaasMark"
-            width={1200}
-            height={360}
+            width={800}
+            height={260}
             priority
             sizes="(max-width: 767px) 96vw, (max-width: 1023px) 92vw, 1080px"
             style={{
               width: "min(96vw, 1080px)",
-              maxWidth: "100%",
+              maxWidth: "50%",
               height: "auto",
             }}
           />
@@ -191,6 +249,12 @@ export function ComingSoon() {
           Ons bou iets spesiaal vir jou gemeenskap. Hou die spasie — PlaasMark
           maak dit binnekort makliker om plaasvars direk te ondersteun.
         </Subtitle>
+        <CtaRow>
+          <PrimaryCta href="/register">Registreer (gratis)</PrimaryCta>
+          <SecondaryCta href="/register?role=seller">
+            Ek wil verkoop
+          </SecondaryCta>
+        </CtaRow>
         <Foot>© {new Date().getFullYear()} PlaasMark</Foot>
         <ShopHint href="/shop">Voorskou: kyk na die winkel →</ShopHint>
       </Content>

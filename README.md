@@ -1,24 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+PlaasMark is a simple local marketplace (Next.js + Prisma + MySQL).
 
 ## Getting Started
 
-First, run the development server:
+### Prereqs
+
+- Node.js (recommended: LTS)
+- MySQL running locally (see `DATABASE_URL` below)
+
+### Configure env
+
+Copy `.env.example` to `.env` and update `DATABASE_URL`.
+
+### Install
+
+```bash
+npm install
+```
+
+### Database
+
+Apply migrations and generate the Prisma client:
+
+```bash
+npx prisma migrate dev
+npx prisma generate
+```
+
+### Run dev server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+App runs on `http://localhost:3002` (see `PORT` in `.env.example`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Key routes
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `/`: Home (welcome + top sellers)
+- `/shop`: Browse all products (search + store filter)
+- `/shop/<slug>--<storeId>`: Store page (stable URL)
+- `/register`: Customer/seller registration (OTP verify)
+- `/login`: OTP login
+- `/profile`: Customer profile or Seller store setup + add products
+- `/checkout`: Checkout (requires OTP verification before order)
+
+## OTP (dev)
+
+By default this project can return the OTP in the API response (for local testing only):
+
+```bash
+# .env (dev only)
+VERIFICATION_OTP_IN_RESPONSE=true
+```
+
+Never enable this in production. Hook in an SMS provider in `app/api/verify-phone/request/route.ts`.
+
+## Notes about images
+
+Product/store images can be stored as **data URLs** (simple MVP upload). The DB columns are `LONGTEXT`.
 
 ## Learn More
 

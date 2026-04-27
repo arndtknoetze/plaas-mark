@@ -1,12 +1,16 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import dynamic from "next/dynamic";
 import styled from "styled-components";
 import { Container } from "@/components/Container";
-import { Header } from "@/components/Header";
 import { PageWrapper } from "@/components/PageWrapper";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+
+const Header = dynamic(
+  () => import("@/components/Header").then((m) => m.Header),
+  { ssr: false },
+);
 
 const Root = styled.div`
   min-height: 100vh;
@@ -20,19 +24,6 @@ const Main = styled.main`
 `;
 
 export function Shell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const isComingSoonHome = pathname === "/";
-
-  if (isComingSoonHome) {
-    return (
-      <Root>
-        <ServiceWorkerRegister />
-        <Main>{children}</Main>
-        <PwaInstallPrompt />
-      </Root>
-    );
-  }
-
   return (
     <Root>
       <Header />

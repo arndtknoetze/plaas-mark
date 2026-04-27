@@ -2,9 +2,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { Container } from "@/components/Container";
 import { useCart } from "@/lib/cart-context";
+import {
+  clearStoredSession,
+  loadStoredSession,
+  type StoredSession,
+} from "@/lib/session-storage";
 
 const Bar = styled.header`
   position: sticky;
@@ -56,6 +62,35 @@ const Actions = styled.div`
   gap: 4px;
 `;
 
+const RegisterLink = styled(Link)`
+  display: none;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: #ffffff;
+  background: ${({ theme }) => theme.colors.primary};
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+
+  @media (min-width: 768px) {
+    display: inline-flex;
+  }
+
+  &:hover {
+    background: ${({ theme }) => theme.colors.secondary};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.colors.accent};
+    outline-offset: 2px;
+  }
+`;
+
 const IconButton = styled.button`
   display: inline-flex;
   align-items: center;
@@ -81,6 +116,92 @@ const IconButton = styled.button`
     outline: 2px solid ${({ theme }) => theme.colors.accent};
     outline-offset: 2px;
   }
+`;
+
+const MenuWrap = styled.div`
+  position: relative;
+`;
+
+const Menu = styled.div`
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  min-width: 220px;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.06),
+    0 8px 24px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 6px;
+  z-index: 60;
+`;
+
+const MenuItem = styled(Link)`
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 10px;
+  text-decoration: none;
+  color: ${({ theme }) => theme.colors.textDark};
+  font-size: 0.9rem;
+  font-weight: 600;
+
+  &:hover {
+    background: ${({ theme }) => theme.colors.background};
+    color: ${({ theme }) => theme.colors.primary};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.colors.accent};
+    outline-offset: 2px;
+  }
+`;
+
+const MenuButton = styled.button`
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: ${({ theme }) => theme.colors.textDark};
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    background: ${({ theme }) => theme.colors.background};
+    color: ${({ theme }) => theme.colors.primary};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.colors.accent};
+    outline-offset: 2px;
+  }
+`;
+
+const MenuMeta = styled.div`
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid ${({ theme }) => theme.colors.background};
+  margin-bottom: 6px;
+`;
+
+const MenuName = styled.div`
+  font-weight: 800;
+  color: ${({ theme }) => theme.colors.textDark};
+  line-height: 1.2;
+`;
+
+const MenuPhone = styled.div`
+  font-size: 0.8125rem;
+  color: ${({ theme }) => theme.colors.textLight};
+  margin-top: 2px;
 `;
 
 const ShopLink = styled(Link)`
@@ -202,6 +323,42 @@ function MenuIcon() {
 export function Header() {
   const { items } = useCart();
   const count = items.reduce((sum, line) => sum + line.quantity, 0);
+  const [session, setSession] = useState<StoredSession | null>(() =>
+    loadStoredSession(),
+  );
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "plaasmark-session") {
+        setSession(loadStoredSession());
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      const el = menuRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && el.contains(e.target)) return;
+      setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("touchstart", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("touchstart", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
 
   return (
     <Bar>
@@ -217,6 +374,9 @@ export function Header() {
           />
         </Brand>
         <Actions>
+          {!session ? (
+            <RegisterLink href="/register">Registreer</RegisterLink>
+          ) : null}
           <ShopLink href="/shop">Winkel</ShopLink>
           <OrdersLink href="/my-orders">My orders</OrdersLink>
           <CartLink
@@ -228,9 +388,59 @@ export function Header() {
               <CartBadge>{count > 99 ? "99+" : count}</CartBadge>
             ) : null}
           </CartLink>
-          <IconButton type="button" aria-label="Menu">
-            <MenuIcon />
-          </IconButton>
+          <MenuWrap ref={menuRef}>
+            <IconButton
+              type="button"
+              aria-label="Menu"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              <MenuIcon />
+            </IconButton>
+            {menuOpen ? (
+              <Menu role="menu" aria-label="User menu">
+                {session ? (
+                  <MenuMeta>
+                    <MenuName>{session.name}</MenuName>
+                    <MenuPhone>{session.phone}</MenuPhone>
+                  </MenuMeta>
+                ) : null}
+
+                {!session ? (
+                  <>
+                    <MenuItem role="menuitem" href="/register">
+                      Registreer
+                    </MenuItem>
+                    <MenuItem role="menuitem" href="/login">
+                      Meld aan
+                    </MenuItem>
+                  </>
+                ) : (
+                  <>
+                    <MenuItem role="menuitem" href="/profile">
+                      Profiel
+                    </MenuItem>
+                    <MenuButton
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        clearStoredSession();
+                        setSession(null);
+                        setMenuOpen(false);
+                      }}
+                    >
+                      Teken uit
+                    </MenuButton>
+                  </>
+                )}
+
+                <MenuItem role="menuitem" href="/my-orders">
+                  My orders
+                </MenuItem>
+              </Menu>
+            ) : null}
+          </MenuWrap>
         </Actions>
       </Inner>
     </Bar>
