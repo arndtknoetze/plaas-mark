@@ -14,14 +14,6 @@ export function buildLocationEntryUrl(
     headerList.get("host")?.trim() ||
     "";
 
-  const forwardedProto = headerList
-    .get("x-forwarded-proto")
-    ?.split(",")[0]
-    ?.trim();
-  const proto =
-    forwardedProto ||
-    (process.env.NODE_ENV === "production" ? "https" : "http");
-
   const lower = hostFull.toLowerCase();
   const colonIdx = lower.lastIndexOf(":");
   const maybePort =
@@ -34,13 +26,28 @@ export function buildLocationEntryUrl(
       ? hostFull.slice(0, colonIdx)
       : hostFull.split(":")[0];
 
+  const forwardedHeader = headerList.get("forwarded") ?? "";
+  const forwardedProto =
+    forwardedHeader.match(/(?:^|;|,)\s*proto=([^;,\s]+)/i)?.[1]?.trim() ||
+    headerList.get("x-forwarded-proto")?.split(",")[0]?.trim() ||
+    headerList.get("x-forwarded-protocol")?.split(",")[0]?.trim() ||
+    headerList.get("x-url-scheme")?.trim() ||
+    "";
+
   if (
     hostnameOnly === "localhost" ||
     /^\d{1,3}(\.\d{1,3}){3}$/.test(hostnameOnly ?? "")
   ) {
+    const proto =
+      forwardedProto ||
+      (process.env.NODE_ENV === "production" ? "https" : "http");
     return `${proto}://${slug}.localhost${maybePort}/`;
   }
 
+  // In production, always emit https links for real domains even if an upstream
+  // proxy misreports `x-forwarded-proto` as http.
+  const proto =
+    process.env.NODE_ENV === "production" ? "https" : forwardedProto || "http";
   const root = siteDomain();
   return `${proto}://${slug}.${root}/`;
 }

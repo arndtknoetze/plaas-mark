@@ -21,9 +21,6 @@
     "postinstall": "prisma generate",
     "prepare": "husky"
   },
-  "prisma": {
-    "seed": "node prisma/seed.mjs"
-  },
   "lint-staged": {
     "*.{ts,tsx,js,mjs,cjs}": [
       "eslint --fix --max-warnings 0",

@@ -4,7 +4,7 @@
 
 export function siteDomain(): string {
   const raw = process.env.NEXT_PUBLIC_SITE_DOMAIN?.trim();
-  return raw ? raw.toLowerCase() : "plaasmark.co.za";
+  return raw ? raw.toLowerCase() : "plaas-mark.co.za";
 }
 
 /**

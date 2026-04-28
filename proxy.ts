@@ -12,7 +12,7 @@ const DEFAULT_LOCATION_SLUG = "malmesbury";
 const HEADER_LOCATION_SLUG = "x-location-slug";
 const HEADER_APP_SHELL = "x-app-shell";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   if (
     pathname.startsWith("/admin") &&
@@ -21,7 +21,7 @@ export function middleware(request: NextRequest) {
   ) {
     const token = request.cookies.get(getAdminCookieName())?.value ?? "";
     // Edge runtime: verify using Web Crypto.
-    // Middleware may be async.
+    // Proxy may be async.
     return (async () => {
       const session = token ? await verifyAdminSessionTokenEdge(token) : null;
       if (!session) {
@@ -30,14 +30,14 @@ export function middleware(request: NextRequest) {
         url.searchParams.set("next", pathname);
         return NextResponse.redirect(url);
       }
-      return continueMiddleware(request);
+      return continueProxy(request);
     })();
   }
 
-  return continueMiddleware(request);
+  return continueProxy(request);
 }
 
-function continueMiddleware(request: NextRequest) {
+function continueProxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const host = request.headers.get("host");
   const fromSubdomain = resolveLocationSlugFromHost(host);
