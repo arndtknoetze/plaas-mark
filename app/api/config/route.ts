@@ -5,5 +5,6 @@ import { isPhoneOtpDisabled } from "@/lib/phone-otp";
 export async function GET() {
   return NextResponse.json({
     disablePhoneOtp: isPhoneOtpDisabled(),
+    adminRoutesEnabled: process.env.ADMIN_ROUTES_ENABLED === "true",
   });
 }

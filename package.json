@@ -15,6 +15,7 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
+    "db:snapshot": "node scripts/export-seed-snapshot.mjs",
     "db:setup": "prisma migrate deploy && prisma db seed",
     "postinstall": "prisma generate",
     "prepare": "husky"
@@ -31,10 +32,13 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
+    "lucide-react": "^1.11.0",
     "next": "16.2.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "styled-components": "^6.4.1"
+    "recharts": "^3.8.1",
+    "styled-components": "^6.4.1",
+    "ua-parser-js": "^2.0.9"
   },
   "devDependencies": {
     "@types/node": "^20",

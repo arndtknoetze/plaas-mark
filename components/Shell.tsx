@@ -7,6 +7,7 @@ import { BetaWelcomeModal } from "@/components/BetaWelcomeModal";
 import { PageWrapper } from "@/components/PageWrapper";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import { VisitTracker } from "@/components/VisitTracker";
 import type { PublicLocation } from "@/lib/location";
 
 const Header = dynamic(
@@ -28,15 +29,22 @@ const Main = styled.main`
 export function Shell({
   children,
   location,
+  variant = "site",
 }: {
   children: React.ReactNode;
   location: PublicLocation | null;
+  variant?: "site" | "admin";
 }) {
+  if (variant === "admin") {
+    return <Root>{children}</Root>;
+  }
+
   return (
     <Root>
       <Header location={location} />
       <BetaWelcomeModal />
       <ServiceWorkerRegister />
+      <VisitTracker />
       <Main>
         <PageWrapper>
           <Container>{children}</Container>

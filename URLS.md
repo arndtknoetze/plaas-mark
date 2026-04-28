@@ -14,6 +14,8 @@ Most catalogue and store APIs resolve the active **`Location`** from middleware 
   - Home (welcome / top sellers for the current location)
 - **`/shop`**
   - Browse products (search + store filter) for the current location
+- **`/shops`**
+  - Browse stores (active stores in the current location)
 - **`/shop/<slug>--<storeId>`**
   - Store page (stable URL + QR-friendly). Example: `/shop/botha-bakery--ckz123...`
 - **`/cart`**

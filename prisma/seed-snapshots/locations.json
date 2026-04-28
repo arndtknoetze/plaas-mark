@@ -1,0 +1,20 @@
+[
+  {
+    "id": "cmohgmyvr0000q1u5i7j21ix9",
+    "name": "Malmesbury",
+    "slug": "malmesbury",
+    "createdAt": "2026-04-27T17:17:36.663Z"
+  },
+  {
+    "id": "cmohgmywy0001q1u56puxuohw",
+    "name": "Paarl",
+    "slug": "paarl",
+    "createdAt": "2026-04-27T17:17:36.706Z"
+  },
+  {
+    "id": "cmohgmyx30002q1u50ifx59vu",
+    "name": "Stellenbosch",
+    "slug": "stellenbosch",
+    "createdAt": "2026-04-27T17:17:36.712Z"
+  }
+]

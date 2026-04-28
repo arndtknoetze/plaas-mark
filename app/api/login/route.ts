@@ -3,6 +3,7 @@ import { logApiLocationDebug } from "@/lib/api-location-debug-log";
 import { getLocationFromHeaders } from "@/lib/location";
 import { prisma } from "@/lib/db";
 import { isPhoneOtpDisabled } from "@/lib/phone-otp";
+import { createUserSessionToken, getUserCookieName } from "@/lib/user-session";
 
 type BodyPayload = {
   phone?: unknown;
@@ -55,7 +56,10 @@ export async function POST(request: Request) {
         );
       }
 
-      const member = await prisma.member.findUnique({ where: { phone } });
+      const member = await prisma.member.findUnique({
+        where: { phone },
+        select: { id: true, name: true, phone: true },
+      });
       if (!member) {
         return NextResponse.json(
           {
@@ -66,10 +70,25 @@ export async function POST(request: Request) {
         );
       }
 
-      return NextResponse.json({
+      const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30; // 30d
+      const token = createUserSessionToken({
+        memberId: member.id,
+        phone: member.phone,
+        exp,
+      });
+
+      const res = NextResponse.json({
         ok: true,
         session: { name: member.name, phone: member.phone },
       });
+      res.cookies.set(getUserCookieName(), token, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 30,
+      });
+      return res;
     }
 
     if (!phone || !verificationToken) {
@@ -79,7 +98,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const session = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const removed = await tx.phoneVerifyToken.deleteMany({
         where: {
           token: verificationToken,
@@ -93,9 +112,12 @@ export async function POST(request: Request) {
         );
       }
 
-      const member = await tx.member.findUnique({ where: { phone } });
+      const member = await tx.member.findUnique({
+        where: { phone },
+        select: { id: true, name: true, phone: true },
+      });
       if (member) {
-        return { name: member.name, phone: member.phone };
+        return { memberId: member.id, name: member.name, phone: member.phone };
       }
 
       throw new ForbiddenLoginError(
@@ -103,7 +125,25 @@ export async function POST(request: Request) {
       );
     });
 
-    return NextResponse.json({ ok: true, session });
+    const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30; // 30d
+    const token = createUserSessionToken({
+      memberId: result.memberId,
+      phone: result.phone,
+      exp,
+    });
+
+    const res = NextResponse.json({
+      ok: true,
+      session: { name: result.name, phone: result.phone },
+    });
+    res.cookies.set(getUserCookieName(), token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+    return res;
   } catch (err) {
     if (err instanceof ForbiddenLoginError) {
       return NextResponse.json({ error: err.message }, { status: 403 });

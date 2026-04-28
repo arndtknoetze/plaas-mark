@@ -198,62 +198,19 @@ const MenuPhone = styled.div`
   margin-top: 2px;
 `;
 
-const ShopLink = styled(Link)`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 0 10px;
-  border-radius: 10px;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: ${({ theme }) => theme.colors.textDark};
-  text-decoration: none;
-  white-space: nowrap;
-
-  @media (max-width: 767px) {
-    display: none;
-  }
-
-  &:hover {
-    background: ${({ theme }) => theme.colors.background};
-    color: ${({ theme }) => theme.colors.primary};
-  }
-
-  &:focus-visible {
-    outline: 2px solid ${({ theme }) => theme.colors.accent};
-    outline-offset: 2px;
-  }
+const MenuDivider = styled.div`
+  height: 1px;
+  margin: 6px 6px;
+  background: ${({ theme }) => theme.colors.background};
 `;
 
-const AboutLink = styled(ShopLink)``;
-
-const OrdersLink = styled(Link)`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 0 10px;
-  border-radius: 10px;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: ${({ theme }) => theme.colors.textDark};
-  text-decoration: none;
-  white-space: nowrap;
-
-  @media (max-width: 767px) {
-    display: none;
-  }
-
-  &:hover {
-    background: ${({ theme }) => theme.colors.background};
-    color: ${({ theme }) => theme.colors.primary};
-  }
-
-  &:focus-visible {
-    outline: 2px solid ${({ theme }) => theme.colors.accent};
-    outline-offset: 2px;
-  }
+const MenuGroupLabel = styled.div`
+  margin: 8px 10px 4px;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 900;
+  color: ${({ theme }) => theme.colors.textLight};
 `;
 
 const CartLink = styled(Link)`
@@ -362,6 +319,7 @@ export function Header({ location }: { location: PublicLocation | null }) {
   const [session, setSession] = useState<StoredSession | null>(() =>
     loadStoredSession(),
   );
+  const [adminRoutesEnabled, setAdminRoutesEnabled] = useState(false);
   const [storesLoaded, setStoresLoaded] = useState(false);
   const [hasNoStoreInArea, setHasNoStoreInArea] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
@@ -380,6 +338,21 @@ export function Header({ location }: { location: PublicLocation | null }) {
     return () => {
       window.removeEventListener("storage", onStorage);
       window.removeEventListener("plaasmark-session", onSession);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((d: unknown) => {
+        if (cancelled || !d || typeof d !== "object") return;
+        const v = (d as { adminRoutesEnabled?: unknown }).adminRoutesEnabled;
+        if (typeof v === "boolean") setAdminRoutesEnabled(v);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
     };
   }, []);
 
@@ -469,7 +442,7 @@ export function Header({ location }: { location: PublicLocation | null }) {
       <Inner>
         <BrandCluster>
           <Brand
-            href="/shop"
+            href="/"
             aria-label={
               location?.name ? `PlaasMark (${location.name})` : "PlaasMark"
             }
@@ -485,20 +458,6 @@ export function Header({ location }: { location: PublicLocation | null }) {
           </Brand>
         </BrandCluster>
         <Actions>
-          <ShopLink href="/shop">{t("shop")}</ShopLink>
-          <AboutLink href="/about">{t("about")}</AboutLink>
-          {session ? (
-            <OrdersLink href="/my-orders">{t("myOrders")}</OrdersLink>
-          ) : null}
-          {session ? (
-            <OrdersLink href="/activity">{t("activity")}</OrdersLink>
-          ) : null}
-          {session ? (
-            <OrdersLink href="/profile">{t("account")}</OrdersLink>
-          ) : null}
-          {session && storesLoaded && hasNoStoreInArea ? (
-            <OrdersLink href="/begin-verkoop">{t("beginSelling")}</OrdersLink>
-          ) : null}
           {session ? (
             <BellLink
               href="/activity"
@@ -547,23 +506,71 @@ export function Header({ location }: { location: PublicLocation | null }) {
                   </MenuMeta>
                 ) : null}
 
+                <MenuGroupLabel>Browse</MenuGroupLabel>
                 <MenuItem role="menuitem" href="/shop">
                   {t("shop")}
+                </MenuItem>
+                <MenuItem role="menuitem" href="/shops">
+                  Shops
                 </MenuItem>
                 <MenuItem role="menuitem" href="/about">
                   {t("about")}
                 </MenuItem>
+
                 {session ? (
-                  <MenuItem role="menuitem" href="/my-orders">
-                    {t("myOrders")}
-                  </MenuItem>
-                ) : null}
-                {session ? (
-                  <MenuItem role="menuitem" href="/activity">
-                    {t("activity")}
-                  </MenuItem>
+                  <>
+                    <MenuDivider />
+                    <MenuGroupLabel>Account</MenuGroupLabel>
+                    <MenuItem role="menuitem" href="/profile">
+                      {t("account")}
+                    </MenuItem>
+                    <MenuItem role="menuitem" href="/activity">
+                      {t("activity")}
+                    </MenuItem>
+                    <MenuItem role="menuitem" href="/my-orders">
+                      {t("myOrders")}
+                    </MenuItem>
+
+                    {storesLoaded && hasNoStoreInArea ? (
+                      <>
+                        <MenuDivider />
+                        <MenuGroupLabel>Selling</MenuGroupLabel>
+                        <MenuItem role="menuitem" href="/begin-verkoop">
+                          {t("beginSelling")}
+                        </MenuItem>
+                      </>
+                    ) : null}
+
+                    <MenuDivider />
+                    <MenuGroupLabel>Session</MenuGroupLabel>
+                    {adminRoutesEnabled ? (
+                      <MenuItem role="menuitem" href="/admin">
+                        Admin
+                      </MenuItem>
+                    ) : null}
+                    <MenuButton
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        fetch("/api/logout", { method: "POST" }).catch(
+                          () => {},
+                        );
+                        clearStoredSession();
+                        setSession(null);
+                        setStoresLoaded(false);
+                        setHasNoStoreInArea(false);
+                        setUnreadNotifications(0);
+                        setMenuOpen(false);
+                        router.replace("/");
+                      }}
+                    >
+                      {t("signOut")}
+                    </MenuButton>
+                  </>
                 ) : (
                   <>
+                    <MenuDivider />
+                    <MenuGroupLabel>Sign in</MenuGroupLabel>
                     <MenuItem role="menuitem" href="/login">
                       {t("signIn")}
                     </MenuItem>
@@ -572,34 +579,6 @@ export function Header({ location }: { location: PublicLocation | null }) {
                     </MenuItem>
                   </>
                 )}
-                {session ? (
-                  <MenuItem role="menuitem" href="/profile">
-                    {t("account")}
-                  </MenuItem>
-                ) : null}
-                {session && storesLoaded && hasNoStoreInArea ? (
-                  <MenuItem role="menuitem" href="/begin-verkoop">
-                    {t("beginSelling")}
-                  </MenuItem>
-                ) : null}
-
-                {session ? (
-                  <MenuButton
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      clearStoredSession();
-                      setSession(null);
-                      setStoresLoaded(false);
-                      setHasNoStoreInArea(false);
-                      setUnreadNotifications(0);
-                      setMenuOpen(false);
-                      router.replace("/");
-                    }}
-                  >
-                    {t("signOut")}
-                  </MenuButton>
-                ) : null}
               </Menu>
             ) : null}
           </MenuWrap>

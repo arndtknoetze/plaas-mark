@@ -7,10 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum MemberRole {
+  MEMBER
+  ADMIN
+}
+
 model Member {
   id        String   @id @default(cuid())
   name      String
   phone     String   @unique
+  role      MemberRole @default(MEMBER)
   createdAt DateTime @default(now())
 
   stores        Store[]
@@ -191,6 +197,15 @@ model AnalyticsEvent {
 
   ipHash      String?
   userAgent   String?          @db.Text
+  browserName    String?
+  browserVersion String?
+  osName         String?
+  osVersion      String?
+  deviceVendor   String?
+  deviceModel    String?
+  deviceType     String?
+  isMobile       Boolean?
+  isBot          Boolean?
   props       Json?
   createdAt   DateTime         @default(now())
 

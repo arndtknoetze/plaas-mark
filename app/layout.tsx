@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import { LanguageProvider } from "@/components/LanguageProvider";
 import { Shell } from "@/components/Shell";
 import { getPublicLocationOrNull } from "@/lib/location";
@@ -34,16 +35,24 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const location = await getPublicLocationOrNull();
+  const h = await headers();
+  const shell = h.get("x-app-shell") === "admin" ? "admin" : "site";
   const cookieStore = await cookies();
   const rawLang = cookieStore.get("plaasmark-lang")?.value ?? "af";
   const initialLanguage: Language = rawLang === "en" ? "en" : "af";
 
   return (
     <html lang="en">
-      <body style={{ backgroundColor: theme.colors.background }}>
+      <body
+        style={{
+          backgroundColor: theme.colors.background,
+        }}
+      >
         <StyledComponentsRegistry>
           <LanguageProvider initialLanguage={initialLanguage}>
-            <Shell location={location}>{children}</Shell>
+            <Shell location={location} variant={shell}>
+              {children}
+            </Shell>
           </LanguageProvider>
         </StyledComponentsRegistry>
       </body>
