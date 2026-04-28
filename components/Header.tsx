@@ -47,16 +47,24 @@ const BrandCluster = styled.div`
   justify-content: center;
   gap: 2px;
   min-width: 0;
-  flex-shrink: 0;
+  flex: 1 1 auto;
 `;
 
 const Brand = styled(Link)`
   position: relative;
   display: block;
   height: 40px;
-  width: 198px;
-  flex-shrink: 0;
+  width: 160px;
+  flex-shrink: 1;
   text-decoration: none;
+
+  @media (min-width: 375px) {
+    width: 180px;
+  }
+
+  @media (min-width: 420px) {
+    width: 198px;
+  }
 
   @media (min-width: 768px) {
     height: 46px;
@@ -74,6 +82,7 @@ const Actions = styled.div`
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
 `;
 
 const IconButton = styled.button`
@@ -202,6 +211,10 @@ const ShopLink = styled(Link)`
   text-decoration: none;
   white-space: nowrap;
 
+  @media (max-width: 767px) {
+    display: none;
+  }
+
   &:hover {
     background: ${({ theme }) => theme.colors.background};
     color: ${({ theme }) => theme.colors.primary};
@@ -225,6 +238,10 @@ const OrdersLink = styled(Link)`
   color: ${({ theme }) => theme.colors.textDark};
   text-decoration: none;
   white-space: nowrap;
+
+  @media (max-width: 767px) {
+    display: none;
+  }
 
   &:hover {
     background: ${({ theme }) => theme.colors.background};
