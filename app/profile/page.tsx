@@ -216,6 +216,17 @@ const PrimaryLink = styled(Link)`
   }
 `;
 
+const StorePrimaryLink = styled(PrimaryLink)<{ $color: string }>`
+  background: ${({ $color }) => $color};
+  border-color: ${({ $color }) => $color};
+
+  &:hover {
+    background: ${({ $color }) => $color};
+    border-color: ${({ $color }) => $color};
+    filter: brightness(0.92);
+  }
+`;
+
 const SecondaryButton = styled.button`
   min-height: 44px;
   padding: 0 14px;
@@ -681,6 +692,15 @@ const PrimaryBtn = styled.button`
   }
 `;
 
+const StorePrimaryBtn = styled(PrimaryBtn)<{ $color: string }>`
+  background: ${({ $color }) => $color};
+
+  &:hover:not(:disabled) {
+    background: ${({ $color }) => $color};
+    filter: brightness(0.92);
+  }
+`;
+
 const CtaCard = styled(Card)`
   display: flex;
   flex-direction: column;
@@ -902,6 +922,8 @@ export default function ProfilePage() {
     selectedAccent && isHexColor(selectedAccent)
       ? hexToRgba(selectedAccent, 0.16)
       : "rgba(46, 94, 62, 0.12)";
+  const storeColor =
+    selectedAccent && isHexColor(selectedAccent) ? selectedAccent : "#2E5E3E";
 
   if (!hydrated || !session) {
     return (
@@ -1083,9 +1105,12 @@ export default function ProfilePage() {
                 </StoreBadgeRow>
 
                 <Actions>
-                  <PrimaryLink href={storePublicUrl(draft)}>
+                  <StorePrimaryLink
+                    href={storePublicUrl(draft)}
+                    $color={storeColor}
+                  >
                     {t("goToStorePage")}
-                  </PrimaryLink>
+                  </StorePrimaryLink>
                   <PillLink
                     href={`/profile?store=${encodeURIComponent(draft.id)}`}
                   >
@@ -1097,13 +1122,14 @@ export default function ProfilePage() {
                   <WarnMsg role="status" style={{ marginTop: 12 }}>
                     {t("storeNotActiveWarning")}
                     <div style={{ marginTop: 10 }}>
-                      <PrimaryBtn
+                      <StorePrimaryBtn
                         type="button"
                         disabled={saving}
                         onClick={() => void activateSelectedStore()}
+                        $color={storeColor}
                       >
                         {saving ? t("activating") : t("activateStore")}
-                      </PrimaryBtn>
+                      </StorePrimaryBtn>
                     </div>
                   </WarnMsg>
                 ) : null}
@@ -1383,9 +1409,13 @@ export default function ProfilePage() {
                     />
                   </Field>
 
-                  <PrimaryBtn type="submit" disabled={saving}>
+                  <StorePrimaryBtn
+                    type="submit"
+                    disabled={saving}
+                    $color={storeColor}
+                  >
                     {saving ? t("saving") : t("saveStoreSetup")}
-                  </PrimaryBtn>
+                  </StorePrimaryBtn>
                 </Form>
               </Card>
 
@@ -1429,9 +1459,12 @@ export default function ProfilePage() {
                 ) : null}
 
                 <Actions style={{ marginTop: 12 }}>
-                  <PrimaryLink href={storePublicUrl(draft)}>
+                  <StorePrimaryLink
+                    href={storePublicUrl(draft)}
+                    $color={storeColor}
+                  >
                     {t("viewStoreInShop")}
-                  </PrimaryLink>
+                  </StorePrimaryLink>
                 </Actions>
               </Card>
 
@@ -1441,13 +1474,14 @@ export default function ProfilePage() {
                   <WarnMsg role="status">
                     {t("storeNotActiveWarning")}
                     <div style={{ marginTop: 10 }}>
-                      <PrimaryBtn
+                      <StorePrimaryBtn
                         type="button"
                         disabled={saving}
                         onClick={() => void activateSelectedStore()}
+                        $color={storeColor}
                       >
                         {saving ? t("activating") : t("activateStore")}
-                      </PrimaryBtn>
+                      </StorePrimaryBtn>
                     </div>
                   </WarnMsg>
                 ) : null}
@@ -1600,9 +1634,13 @@ export default function ProfilePage() {
                     <Hint>{t("productUploadHint")}</Hint>
                   </Field>
 
-                  <PrimaryBtn type="submit" disabled={creatingProduct}>
+                  <StorePrimaryBtn
+                    type="submit"
+                    disabled={creatingProduct}
+                    $color={storeColor}
+                  >
                     {creatingProduct ? t("creating") : t("createProduct")}
-                  </PrimaryBtn>
+                  </StorePrimaryBtn>
                 </Form>
               </Card>
             </>
