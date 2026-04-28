@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import styled from "styled-components";
 import { useCart } from "@/lib/cart-context";
 import { loadStoredCustomer, saveStoredCustomer } from "@/lib/customer-storage";
+import { useLanguage } from "@/lib/useLanguage";
 
 const BackLink = styled(Link)`
   display: inline-block;
@@ -337,6 +338,7 @@ function normalizePhone(value: string) {
 }
 
 export default function CheckoutPage() {
+  const { t } = useLanguage();
   const { items, clearCart } = useCart();
   const [name, setName] = useState(() => {
     if (typeof window === "undefined") return "";
@@ -407,7 +409,7 @@ export default function CheckoutPage() {
     setError(null);
     setDevOtpHint(null);
     if (!phoneNorm) {
-      setError("Vul eers jou foonnommer in.");
+      setError(t("errFillPhoneFirst"));
       return;
     }
     setSendingOtp(true);
@@ -425,7 +427,7 @@ export default function CheckoutPage() {
           "error" in data &&
           typeof (data as { error: unknown }).error === "string"
             ? (data as { error: string }).error
-            : "Kon nie kode stuur nie.";
+            : t("errCouldNotSendCode");
         throw new Error(msg);
       }
       if (data && typeof data === "object" && "devCode" in data) {
@@ -437,7 +439,7 @@ export default function CheckoutPage() {
       setOtpCode("");
       setCodeSent(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Onbekende fout.");
+      setError(err instanceof Error ? err.message : t("errUnknown"));
     } finally {
       setSendingOtp(false);
     }
@@ -447,7 +449,7 @@ export default function CheckoutPage() {
     setError(null);
     const digits = otpCode.replace(/\D/g, "");
     if (digits.length !== 6) {
-      setError("Voer die 6-syfer kode in.");
+      setError(t("errEnterSixDigitCode"));
       return;
     }
     setVerifyingOtp(true);
@@ -465,7 +467,7 @@ export default function CheckoutPage() {
           "error" in data &&
           typeof (data as { error: unknown }).error === "string"
             ? (data as { error: string }).error
-            : "Verifikasie het misluk.";
+            : t("errVerificationFailed");
         throw new Error(msg);
       }
       if (
@@ -475,13 +477,13 @@ export default function CheckoutPage() {
         typeof (data as { verificationToken: unknown }).verificationToken !==
           "string"
       ) {
-        throw new Error("Ongeldige antwoord van bediener.");
+        throw new Error(t("errInvalidServerResponse"));
       }
       const token = (data as { verificationToken: string }).verificationToken;
       setVerificationToken(token);
       setVerifiedForPhone(phoneNorm);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Onbekende fout.");
+      setError(err instanceof Error ? err.message : t("errUnknown"));
     } finally {
       setVerifyingOtp(false);
     }
@@ -491,7 +493,7 @@ export default function CheckoutPage() {
     e.preventDefault();
     setError(null);
     if (!disablePhoneOtp && (!phoneVerified || !verificationToken)) {
-      setError("Bevestig eers jou foonnommer met die kode.");
+      setError(t("errVerifyPhoneBeforeCheckout"));
       return;
     }
     setSubmitting(true);
@@ -521,7 +523,7 @@ export default function CheckoutPage() {
           "error" in data &&
           typeof (data as { error: unknown }).error === "string"
             ? (data as { error: string }).error
-            : "Kon nie bestelling plaas nie.";
+            : t("errCouldNotPlaceOrder");
         throw new Error(msg);
       }
       if (
@@ -530,14 +532,14 @@ export default function CheckoutPage() {
         !("orderId" in data) ||
         typeof (data as { orderId: unknown }).orderId !== "string"
       ) {
-        throw new Error("Ongeldige antwoord van bediener.");
+        throw new Error(t("errInvalidServerResponse"));
       }
       const id = (data as { orderId: string }).orderId;
       saveStoredCustomer(name.trim(), phoneNorm);
       setOrderId(id);
       clearCart();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Onbekende fout.");
+      setError(err instanceof Error ? err.message : t("errUnknown"));
     } finally {
       setSubmitting(false);
     }
@@ -546,15 +548,14 @@ export default function CheckoutPage() {
   if (orderId) {
     return (
       <>
-        <BackLink href="/shop">← Terug na winkel</BackLink>
+        <BackLink href="/shop">{t("backToShop")}</BackLink>
         <SuccessBox>
-          <SuccessTitle>Bestelling ontvang!</SuccessTitle>
-          <SuccessText>
-            Dankie. Ons het jou bestelling gestoor en sal jou kontak indien
-            nodig.
-          </SuccessText>
-          <SuccessMeta>Bestelnommer: {orderId}</SuccessMeta>
-          <ShopLink href="/shop">Gaan terug na winkel</ShopLink>
+          <SuccessTitle>{t("orderReceivedTitle")}</SuccessTitle>
+          <SuccessText>{t("orderReceivedBody")}</SuccessText>
+          <SuccessMeta>
+            {t("orderNumberLabel")} {orderId}
+          </SuccessMeta>
+          <ShopLink href="/shop">{t("continueShopping")}</ShopLink>
         </SuccessBox>
       </>
     );
@@ -563,28 +564,26 @@ export default function CheckoutPage() {
   if (items.length === 0) {
     return (
       <>
-        <BackLink href="/shop">← Terug na winkel</BackLink>
-        <Title>Betaal</Title>
-        <EmptyText>
-          Jou mandjie is leeg. Voeg produkte by om af te reken.
-        </EmptyText>
-        <ShopLink href="/shop">Kies produkte</ShopLink>
+        <BackLink href="/shop">{t("backToShop")}</BackLink>
+        <Title>{t("checkout")}</Title>
+        <EmptyText>{t("cartEmptyCheckout")}</EmptyText>
+        <ShopLink href="/shop">{t("browseProducts")}</ShopLink>
       </>
     );
   }
 
   return (
     <>
-      <BackLink href="/cart">← Terug na mandjie</BackLink>
-      <Title>Betaal</Title>
+      <BackLink href="/cart">{t("backToCart")}</BackLink>
+      <Title>{t("checkout")}</Title>
       <Subtitle>
         {disablePhoneOtp
-          ? "Ontwikkelmodus: geen OTP — vul kontakbesonderhede in en plaas bestelling."
-          : "Kontroleer jou items en vul jou besonderhede in."}
+          ? t("checkoutSubtitleDev")
+          : t("checkoutSubtitleNormal")}
       </Subtitle>
 
       <Section>
-        <SectionTitle>Jou bestelling</SectionTitle>
+        <SectionTitle>{t("checkoutYourOrderSection")}</SectionTitle>
         <List>
           {items.map((line) => (
             <Line key={line.productId}>
@@ -604,11 +603,11 @@ export default function CheckoutPage() {
       </Section>
 
       <Section>
-        <SectionTitle>Kontak</SectionTitle>
+        <SectionTitle>{t("contactSection")}</SectionTitle>
         <Form onSubmit={handleSubmit}>
           {error ? <ErrorMsg role="alert">{error}</ErrorMsg> : null}
           <Field>
-            <Label htmlFor="checkout-name">Naam</Label>
+            <Label htmlFor="checkout-name">{t("labelName")}</Label>
             <Input
               id="checkout-name"
               name="name"
@@ -616,11 +615,11 @@ export default function CheckoutPage() {
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Jou volle naam"
+              placeholder={t("placeholderFullName")}
             />
           </Field>
           <Field>
-            <Label htmlFor="checkout-phone">Foon</Label>
+            <Label htmlFor="checkout-phone">{t("labelPhone")}</Label>
             <Input
               id="checkout-phone"
               name="phone"
@@ -629,7 +628,7 @@ export default function CheckoutPage() {
               required
               value={phone}
               onChange={(e) => handlePhoneChange(e.target.value)}
-              placeholder="Bv. 082 123 4567"
+              placeholder={t("placeholderPhone")}
             />
             {!disablePhoneOtp ? (
               <>
@@ -638,35 +637,29 @@ export default function CheckoutPage() {
                   onClick={() => void sendOtp()}
                   disabled={sendingOtp || !phoneNorm}
                 >
-                  {sendingOtp ? "Stuur kode…" : "Stuur verifikasiekode"}
+                  {sendingOtp
+                    ? t("sendingVerificationCode")
+                    : t("sendVerificationCode")}
                 </SecondaryBtn>
                 {devOtpHint ? (
                   <DevCodeHint>
-                    Ontwikkeling: jou kode is <strong>{devOtpHint}</strong>{" "}
-                    (stel <code>VERIFICATION_OTP_IN_RESPONSE=true</code> in
-                    produksie nooit aan nie).
+                    {t("checkoutDevOtpBannerPrefix")}
+                    <strong>{devOtpHint}</strong>{" "}
+                    {t("checkoutDevOtpBannerSuffix")}
                   </DevCodeHint>
                 ) : codeSent ? (
-                  <HintText>
-                    Voer die 6-syfer kode in wat by hierdie nommer gestuur is
-                    (of gebruik die ontwikkelaarwenk hierbo).
-                  </HintText>
+                  <HintText>{t("otpSentHint")}</HintText>
                 ) : (
-                  <HintText>
-                    Jy moet eers &apos;n kode aanvra en dit bevestig om te kan
-                    betaal.
-                  </HintText>
+                  <HintText>{t("otpRequestHint")}</HintText>
                 )}
               </>
             ) : (
-              <HintText>
-                Geen OTP met <code>DISABLE_PHONE_OTP</code> op die bediener nie.
-              </HintText>
+              <HintText>{t("checkoutNoOtpHint")}</HintText>
             )}
           </Field>
           {!disablePhoneOtp && codeSent ? (
             <Field>
-              <Label htmlFor="checkout-otp">6-syfer kode</Label>
+              <Label htmlFor="checkout-otp">{t("otpCodeLabel")}</Label>
               <Input
                 id="checkout-otp"
                 name="otp"
@@ -686,33 +679,29 @@ export default function CheckoutPage() {
                   verifyingOtp || otpCode.replace(/\D/g, "").length !== 6
                 }
               >
-                {verifyingOtp ? "Bevestig…" : "Bevestig foon"}
+                {verifyingOtp ? t("verifyingPhone") : t("confirmPhone")}
               </SecondaryBtn>
             </Field>
           ) : null}
           {!disablePhoneOtp && phoneVerified ? (
-            <VerifiedLine>
-              ✓ Foonnommer bevestig. Jy kan nou bestelling plaas.
-            </VerifiedLine>
+            <VerifiedLine>{t("verifiedPhoneLine")}</VerifiedLine>
           ) : disablePhoneOtp && phoneNorm ? (
-            <VerifiedLine>
-              ✓ Ontwikkelmodus: geen OTP — kontaknommer ingevul.
-            </VerifiedLine>
+            <VerifiedLine>{t("verifiedDevModeLine")}</VerifiedLine>
           ) : null}
           <Field>
             <Label htmlFor="checkout-notes">
-              Notas <OptionalHint>(opsioneel)</OptionalHint>
+              {t("notesLabel")} <OptionalHint>{t("optionalTag")}</OptionalHint>
             </Label>
             <TextArea
               id="checkout-notes"
               name="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Afleweringsinstruksies, allergieë, ens."
+              placeholder={t("placeholderNotes")}
             />
           </Field>
           <SubmitBtn type="submit" disabled={submitting || !phoneVerified}>
-            {submitting ? "Stuur…" : "Plaas bestelling"}
+            {submitting ? t("submittingOrder") : t("placeOrder")}
           </SubmitBtn>
         </Form>
       </Section>

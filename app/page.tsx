@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { HomeClient } from "@/components/HomeClient";
+import { redirect } from "next/navigation";
 import { LocationSelector } from "@/components/LocationSelector";
 import { resolveLocationSlugFromHost } from "@/lib/host-subdomain";
 import { buildLocationEntryUrl } from "@/lib/location-entry-url";
@@ -21,7 +21,7 @@ export default async function HomePage() {
   const host = h.get("x-forwarded-host") ?? h.get("host");
 
   if (resolveLocationSlugFromHost(host) !== null) {
-    return <HomeClient />;
+    redirect("/shop");
   }
 
   const locations = AREA_CHOICES.map(({ slug, label }) => ({
@@ -29,5 +29,5 @@ export default async function HomePage() {
     href: buildLocationEntryUrl(slug, h),
   }));
 
-  return <LocationSelector heading="Kies jou area" locations={locations} />;
+  return <LocationSelector headingKey="selectLocation" locations={locations} />;
 }

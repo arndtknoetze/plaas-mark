@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LanguageProvider } from "@/components/LanguageProvider";
 import { Shell } from "@/components/Shell";
 import { getPublicLocationOrNull } from "@/lib/location";
 import { StyledComponentsRegistry } from "@/lib/styled-registry";
@@ -36,7 +37,9 @@ export default async function RootLayout({
     <html lang="en">
       <body style={{ backgroundColor: theme.colors.background }}>
         <StyledComponentsRegistry>
-          <Shell location={location}>{children}</Shell>
+          <LanguageProvider>
+            <Shell location={location}>{children}</Shell>
+          </LanguageProvider>
         </StyledComponentsRegistry>
       </body>
     </html>

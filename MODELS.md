@@ -1,92 +1,116 @@
 # PlaasMark — Data models (Prisma)
 
-This document summarizes the **current database models** as defined in `prisma/schema.prisma`, plus the important relationships and how the app uses them.
+This document summarizes the **current database models** as defined in `prisma/schema.prisma`, plus important relationships and how the app uses them.
 
-## Core marketplace
+## Multi-tenant locations
 
-### `Customer`
+Each deployment/path can serve a **`Location`** (town/area). Stores, catalogue products, and orders are scoped to a location. Middleware resolves the active location (see `lib/location.ts`) and APIs use it when reading or writing data.
 
-- **Purpose**: A buyer who places orders.
+### `Location`
+
+- **Purpose**: Tenant area for catalogue, stores, and orders (`locationId` on `Store` and `Order`).
 - **Key fields**
-  - `id`: `uuid`
+  - `id`: `cuid`
   - `name`: string
-  - `phone`: string (**unique**)
+  - `slug`: string (**unique**) — used with request routing / `x-location-slug`
+  - `createdAt`
 - **Relations**
-  - `orders`: `Order[]` (1 customer → many orders)
+  - `stores`: `Store[]`
+  - `orders`: `Order[]`
 
-### `Seller`
+### `Member`
 
-- **Purpose**: A person/business who can manage one or more stores.
+- **Purpose**: One account per phone — can buy (`Order`) and/or sell (`Store`). Replaces separate “customer” vs “seller” tables.
 - **Key fields**
   - `id`: `cuid`
   - `name`: string
   - `phone`: string (**unique**) — used as the current “simple auth identity”
-  - `brandName`: string (legacy high-level brand name; first store is created from this)
-  - `brandColor`: hex string (default `#2E5E3E`)
-  - `logoUrl`: `LongText?` (supports **data URLs**)
-  - `createdAt`, `updatedAt`
+  - `createdAt`
 - **Relations**
-  - `stores`: `Store[]` (1 seller → many stores)
+  - `stores`: `Store[]`
+  - `orders`: `Order[]`
+  - `notifications`: `Notification[]`
+
+### `Notification`
+
+- **Purpose**: In-app messages for a **member** (orders, store activity, etc.).
+- **Key fields**
+  - `id`: `cuid`
+  - `memberId`: FK → `Member.id` (cascade delete)
+  - `type`: string — app-defined; use `lib/notification-types.ts` for known values
+  - `title`: string
+  - `message`: string (`@db.Text`)
+  - `read`: boolean (default `false`)
+  - `createdAt`
+- **Conventional `type` values** (string column, not a DB enum):
+  - `order_created`
+  - `order_update`
+  - `new_store_order`
+- **Indexes**
+  - `@@index([memberId])`
 
 ### `Store`
 
-- **Purpose**: A “shop” under a seller. Sellers can have multiple stores.
+- **Purpose**: A shop belonging to a **member** in a **location**.
 - **Key fields**
   - `id`: `cuid`
-  - `sellerId`: FK → `Seller.id`
-  - `name`: string (display name)
-  - `slug`: string (used in routes)
-  - `isActive`: boolean (default `false`)
-  - `brandColor`: hex string
+  - `memberId`: FK → `Member.id` (cascade delete)
+  - `locationId`: FK → `Location.id`
+  - `name`, `slug`: strings (slug unique per member: `@@unique([memberId, slug])`)
+  - `isActive`: boolean (default **`true`** in schema; first store from seller registration is created **`false`** until activated)
+  - `brandColor`: hex string (default `#2E5E3E`)
   - `logoUrl`: `LongText?` (supports data URLs)
-  - `addressText`: text (pickup/delivery address, free-form)
-  - `email`, `whatsapp`, `instagram`, `facebook`, `website`: strings (optional)
-  - `hoursText`: text (free-form operating hours)
+  - `addressText`, `email`, `whatsapp`, `instagram`, `facebook`, `website`, `hoursText`: optional contact / hours fields
   - `createdAt`, `updatedAt`
 - **Indexes / constraints**
-  - `@@unique([sellerId, slug])` (slug must be unique per seller)
-  - `@@index([sellerId])`, `@@index([slug])`
+  - `@@unique([memberId, slug])`
+  - `@@index([memberId])`, `@@index([locationId])`, `@@index([slug])`
 - **Routing**
-  - Store pages use **stable URLs**: `/shop/<slug>--<storeId>`
+  - Store pages use stable URLs: `/shop/<slug>--<storeId>`
 
 ### `Product`
 
-- **Purpose**: A sellable item shown on `/shop`.
+- **Purpose**: A sellable item in the location catalogue.
 - **Key fields**
   - `id`: `cuid`
   - `title`: string
   - `price`: `Decimal(10,2)`
-  - `unit`: string? (e.g. “per kg”, “per loaf”)
-  - `vendorId`: string (currently used as **storeId**)
+  - `unit`: string? (e.g. “per kg”)
+  - `vendorId`: FK → **`Store.id`** (`vendor*` naming kept for historical/API compatibility)
   - `vendorName`: string (store name snapshot for display)
-  - `image`: `LongText?` (supports **data URL uploads**)
+  - `image`: `LongText?` (data URL uploads supported)
   - `createdAt`, `updatedAt`
-- **Important note**
-  - `vendorId/vendorName` are not a Prisma relation yet; they behave like a “denormalized link” to `Store`.
+- **Relations**
+  - `store`: `Store` via `vendorId`
 
 ## Ordering
 
 ### `Order`
 
-- **Purpose**: A checkout transaction.
+- **Purpose**: Checkout transaction for the **member** who placed it, in one **location**.
 - **Key fields**
   - `id`: `cuid`
-  - `customerId`: FK → `Customer.id`
-  - `notes`: text? (delivery instructions etc.)
+  - `memberId`: FK → `Member.id` (cascade delete)
+  - `locationId`: FK → `Location.id`
+  - `status`: string — **`pending` | `accepted` | `ready` | `completed`** (see `lib/order-status.ts`; DB default `pending`)
+  - `notes`: string? (delivery instructions, etc.)
   - `createdAt`
 - **Relations**
-  - `customer`: `Customer`
+  - `member`: `Member`
+  - `location`: `Location`
   - `items`: `OrderItem[]`
+- **Indexes**
+  - `@@index([memberId])`, `@@index([locationId])`
 
 ### `OrderItem`
 
-- **Purpose**: Line items captured at purchase time.
+- **Purpose**: Line items captured at purchase time (snapshots).
 - **Key fields**
   - `id`: `cuid`
   - `orderId`: FK → `Order.id` (cascade delete)
-  - `productId`: string (Product id at time of ordering)
+  - `productId`: string (product id at order time)
   - `name`, `price`, `quantity`: snapshots
-  - `vendorId`, `vendorName`: snapshots (currently storeId/storeName)
+  - `vendorId`, `vendorName`: snapshots (**store id / store name** at order time)
 - **Indexes**
   - `@@index([orderId])`
 
@@ -96,31 +120,33 @@ This document summarizes the **current database models** as defined in `prisma/s
 
 - **Purpose**: Temporary 6-digit OTP challenge per phone.
 - **Key fields**
+  - `id`: `cuid`
   - `phone`: string
-  - `code`: string (6 digits)
+  - `code`: string
   - `expiresAt`: DateTime
   - `createdAt`
 - **Notes**
-  - When requesting a new OTP, old challenges are deleted for that phone.
+  - New requests for the same phone replace prior challenges (see verify-phone API).
 
 ### `PhoneVerifyToken`
 
-- **Purpose**: Short-lived token issued after correct OTP; used as a one-time proof for actions.
+- **Purpose**: Short-lived token after correct OTP; one-time proof for sensitive actions (when OTP is enabled).
 - **Key fields**
+  - `id`: `cuid`
   - `token`: string (**unique**)
   - `phone`: string
   - `expiresAt`: DateTime
   - `createdAt`
-- **Usage in app**
-  - Used to gate: seller/customer registration, login, and order placement.
-  - Consumed (deleted) once used successfully.
+- **Usage**
+  - Registration, login, and order placement consume a valid token (or use env bypass — see `isPhoneOtpDisabled()`).
 
 ## Rate limiting
 
 ### `RateLimitBucket`
 
-- **Purpose**: Fixed-window counter buckets (e.g. IP-based limits).
+- **Purpose**: Fixed-window counters (e.g. IP-based limits on `POST /api/orders`).
 - **Key fields**
+  - `id`: `cuid`
   - `scope`: string (e.g. `"orders_post_ip"`)
   - `bucketKey`: string (e.g. IP)
   - `windowId`: string (e.g. UTC minute key)
@@ -136,13 +162,12 @@ This document summarizes the **current database models** as defined in `prisma/s
 
 - **Stored by**: login and registration flows
 - **Shape**
-  - `{ role: "customer" | "seller", name: string, phone: string }`
+  - `{ name: string, phone: string }`
 - **Used for**
-  - Showing/hiding header items
-  - Determining seller vs customer profile view
-  - Calling seller-only APIs by sending `phone` (MVP, not secure yet)
+  - Header / UI state
+  - Calling phone-identified APIs (MVP; not a secure session mechanism)
 
-## Known next-normalization steps (optional future improvements)
+## Optional future improvements
 
-- Replace `Product.vendorId/vendorName` with a real relation: `Product.storeId → Store.id`
-- Replace “phone in request body” authorization with a real auth layer (session cookies/JWT/etc.)
+- Replace “phone in body/query” authorization with real sessions (cookies/JWT, etc.).
+- Further normalize naming (`vendorId` → `storeId` in API payloads) if you want stricter consistency.

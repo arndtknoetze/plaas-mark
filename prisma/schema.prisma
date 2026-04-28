@@ -13,8 +13,22 @@ model Member {
   phone     String   @unique
   createdAt DateTime @default(now())
 
-  stores Store[]
-  orders Order[]
+  stores        Store[]
+  orders        Order[]
+  notifications Notification[]
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  memberId  String
+  member    Member   @relation(fields: [memberId], references: [id])
+  type      String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([memberId])
 }
 
 model Location {
@@ -36,7 +50,7 @@ model Store {
 
   name        String
   slug        String
-  isActive    Boolean  @default(false)
+  isActive    Boolean  @default(true)
   brandColor  String   @default("#2E5E3E")
   logoUrl     String?  @db.LongText
 
@@ -79,6 +93,8 @@ model Order {
   member      Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
   locationId  String
   location    Location    @relation(fields: [locationId], references: [id])
+  /// pending | accepted | ready | completed
+  status      String      @default("pending")
   notes       String?
   createdAt   DateTime    @default(now())
   items       OrderItem[]
@@ -134,4 +150,49 @@ model RateLimitBucket {
 
   @@unique([scope, bucketKey, windowId])
   @@index([expiresAt])
+}
+
+/// Anonymous (or member-linked) first-party analytics session keyed by a cookie id.
+model AnalyticsSession {
+  id           String   @id @default(cuid())
+  anonId       String   @unique
+  memberId     String?
+  member       Member?  @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+
+  events AnalyticsEvent[]
+
+  @@index([memberId])
+  @@index([lastSeenAt])
+}
+
+/// Raw event stream for product analytics (page views, funnel steps, etc.).
+model AnalyticsEvent {
+  id          String           @id @default(cuid())
+  sessionId   String
+  session     AnalyticsSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  type        String
+  path        String
+  referrer    String?
+  locale      String?
+
+  locationId  String?
+  location    Location?        @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  storeId     String?
+  store       Store?           @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  orderId     String?
+  order       Order?           @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  ipHash      String?
+  userAgent   String?          @db.Text
+  props       Json?
+  createdAt   DateTime         @default(now())
+
+  @@index([sessionId, createdAt])
+  @@index([type, createdAt])
+  @@index([locationId, createdAt])
+  @@index([storeId, createdAt])
+  @@index([orderId])
 }

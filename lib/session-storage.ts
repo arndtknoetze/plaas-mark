@@ -35,6 +35,7 @@ export function saveStoredSession(session: StoredSession): void {
         phone: session.phone.trim(),
       }),
     );
+    window.dispatchEvent(new Event("plaasmark-session"));
   } catch {
     /* ignore quota / private mode */
   }
@@ -44,6 +45,7 @@ export function clearStoredSession(): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.removeItem(STORAGE_KEY);
+    window.dispatchEvent(new Event("plaasmark-session"));
   } catch {
     /* ignore */
   }

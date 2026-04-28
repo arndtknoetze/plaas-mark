@@ -96,6 +96,10 @@ const Badge = styled.span`
   color: ${({ theme }) => theme.colors.primary};
   background: rgba(46, 94, 62, 0.1);
   border: 1px solid rgba(46, 94, 62, 0.2);
+
+  @media (max-width: 767px) {
+    display: none;
+  }
 `;
 
 const Title = styled.h1`
@@ -250,10 +254,8 @@ export function ComingSoon() {
           maak dit binnekort makliker om plaasvars direk te ondersteun.
         </Subtitle>
         <CtaRow>
-          <PrimaryCta href="/register">Registreer (gratis)</PrimaryCta>
-          <SecondaryCta href="/register?role=seller">
-            Ek wil verkoop
-          </SecondaryCta>
+          <PrimaryCta href="/shop">Blaai winkel</PrimaryCta>
+          <SecondaryCta href="/begin-verkoop">Ek wil verkoop</SecondaryCta>
         </CtaRow>
         <Foot>© {new Date().getFullYear()} PlaasMark</Foot>
         <ShopHint href="/shop">Voorskou: kyk na die winkel →</ShopHint>

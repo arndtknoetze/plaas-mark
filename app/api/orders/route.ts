@@ -58,12 +58,14 @@ export async function GET(request: Request) {
     const orders = member.orders.map((order) => ({
       id: order.id,
       createdAt: order.createdAt.toISOString(),
+      status: order.status,
       notes: order.notes,
       items: order.items.map((item) => ({
         id: item.id,
         name: item.name,
         price: Number(item.price),
         quantity: item.quantity,
+        vendorId: item.vendorId,
         vendorName: item.vendorName,
       })),
     }));
@@ -258,6 +260,27 @@ export async function POST(request: Request) {
     ],
   });
 
+  // Block buying your own products (store ownership by member phone).
+  // Enforced server-side so UI cannot bypass this rule.
+  const buyerMember = await prisma.member.findUnique({
+    where: { phone },
+    select: { id: true },
+  });
+  if (buyerMember) {
+    const ownedStores = await prisma.store.findMany({
+      where: { memberId: buyerMember.id, locationId: location.id },
+      select: { id: true },
+    });
+    const ownedStoreIds = new Set(ownedStores.map((s) => s.id));
+    const hasOwnLine = items.some((i) => ownedStoreIds.has(i.vendorId));
+    if (hasOwnLine) {
+      return NextResponse.json(
+        { error: "Jy kan nie jou eie produkte bestel nie." },
+        { status: 403 },
+      );
+    }
+  }
+
   const verificationToken =
     typeof body.verificationToken === "string"
       ? body.verificationToken.trim()
@@ -298,7 +321,7 @@ export async function POST(request: Request) {
         select: { id: true },
       });
 
-      return tx.order.create({
+      const order = await tx.order.create({
         data: {
           memberId: member.id,
           locationId: location.id,
@@ -315,6 +338,37 @@ export async function POST(request: Request) {
           },
         },
       });
+
+      await tx.notification.create({
+        data: {
+          memberId: member.id,
+          type: "order_created",
+          title: "Bestelling ontvang",
+          message: "Jou bestelling is suksesvol geplaas",
+        },
+      });
+
+      const vendorIds = [...new Set(items.map((item) => item.vendorId))];
+      const storesForNotify = await tx.store.findMany({
+        where: {
+          id: { in: vendorIds },
+          locationId: location.id,
+        },
+        select: { memberId: true },
+      });
+
+      if (storesForNotify.length > 0) {
+        await tx.notification.createMany({
+          data: storesForNotify.map((s) => ({
+            memberId: s.memberId,
+            type: "new_store_order",
+            title: "Nuwe bestelling",
+            message: "Jy het 'n nuwe bestelling ontvang",
+          })),
+        });
+      }
+
+      return order;
     });
 
     await logApiLocationDebug("POST /api/orders (created)", {

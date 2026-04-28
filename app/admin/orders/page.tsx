@@ -1,5 +1,9 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import {
+  buildWhatsAppUrl,
+  DEFAULT_WHATSAPP_ORDER_MESSAGE,
+} from "@/lib/whatsapp-link";
 
 const colors = {
   text: "#1A1A1A",
@@ -93,6 +97,10 @@ export default async function AdminOrdersPage() {
               (sum, line) => sum + Number(line.price) * line.quantity,
               0,
             );
+            const whatsappHref = buildWhatsAppUrl(
+              order.member.phone,
+              DEFAULT_WHATSAPP_ORDER_MESSAGE,
+            );
             return (
               <li
                 key={order.id}
@@ -122,8 +130,42 @@ export default async function AdminOrdersPage() {
                     <div style={{ fontSize: "0.875rem", color: colors.muted }}>
                       {order.member.phone}
                     </div>
+                    {whatsappHref ? (
+                      <a
+                        href={whatsappHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          marginTop: 10,
+                          minHeight: 40,
+                          padding: "0 14px",
+                          borderRadius: 10,
+                          fontSize: "0.875rem",
+                          fontWeight: 700,
+                          color: "#ffffff",
+                          background: "#25d366",
+                          textDecoration: "none",
+                        }}
+                      >
+                        WhatsApp kliënt
+                      </a>
+                    ) : null}
                   </div>
                   <div style={{ textAlign: "right" }}>
+                    <div
+                      style={{
+                        fontSize: "0.78rem",
+                        fontWeight: 700,
+                        textTransform: "capitalize",
+                        color: colors.primary,
+                        marginBottom: 4,
+                      }}
+                    >
+                      {order.status}
+                    </div>
                     <div style={{ fontSize: "0.8rem", color: colors.muted }}>
                       {formatWhen(order.createdAt)}
                     </div>

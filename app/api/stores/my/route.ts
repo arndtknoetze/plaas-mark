@@ -132,6 +132,7 @@ export async function POST(request: Request) {
             locationId: location.id,
             name,
             slug,
+            isActive: true,
           },
         });
         return NextResponse.json({

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import { saveStoredCustomer } from "@/lib/customer-storage";
+import { fileToCroppedDataUrl } from "@/lib/image-crop";
 import { saveStoredSession } from "@/lib/session-storage";
 
 type Role = "customer" | "seller";
@@ -198,14 +199,15 @@ const LogoPreview = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 84px;
+  min-height: 160px;
   overflow: hidden;
 `;
 
 const PreviewImg = styled.img`
-  max-width: 100%;
-  max-height: 140px;
-  object-fit: contain;
+  width: 160px;
+  height: 160px;
+  border-radius: 16px;
+  object-fit: cover;
   display: block;
 `;
 
@@ -410,13 +412,13 @@ export function RegisterClient() {
       return;
     }
     try {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onerror = () => reject(new Error("Kon nie lêer lees nie."));
-        reader.onload = () => resolve(String(reader.result ?? ""));
-        reader.readAsDataURL(file);
+      const cropped = await fileToCroppedDataUrl(file, {
+        aspect: "square",
+        maxSize: 512,
+        mimeType: "image/webp",
+        quality: 0.9,
       });
-      setLogoUrl(dataUrl);
+      setLogoUrl(cropped);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Kon nie logo laai nie.");
     }

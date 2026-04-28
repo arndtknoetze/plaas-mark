@@ -1,30 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import styled from "styled-components";
-import { useLanguage } from "@/lib/useLanguage";
 import { saveStoredSession } from "@/lib/session-storage";
-
-const Title = styled.h1`
-  margin: 0 0 8px;
-  font-size: 1.5rem;
-  font-weight: 900;
-  letter-spacing: -0.03em;
-  color: ${({ theme }) => theme.colors.textDark};
-
-  @media (min-width: 768px) {
-    font-size: 1.9rem;
-  }
-`;
-
-const Subtitle = styled.p`
-  margin: 0 0 18px;
-  font-size: 0.95rem;
-  line-height: 1.55;
-  color: ${({ theme }) => theme.colors.textLight};
-`;
 
 const Card = styled.div`
   padding: 16px;
@@ -147,16 +125,18 @@ function normalizePhone(v: string) {
   return v.trim().replace(/\s+/g, " ");
 }
 
-export function LoginForm() {
-  const { t } = useLanguage();
-  const router = useRouter();
+type Props = {
+  onSuccess?: () => void;
+};
+
+export function AccountOtpForm({ onSuccess }: Props) {
   const [disablePhoneOtp, setDisablePhoneOtp] = useState(false);
+  const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [codeSent, setCodeSent] = useState(false);
   const [sending, setSending] = useState(false);
-  const [verifying, setVerifying] = useState(false);
-  const [loggingIn, setLoggingIn] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [devOtpHint, setDevOtpHint] = useState<string | null>(null);
 
@@ -181,56 +161,11 @@ export function LoginForm() {
 
   const phoneNorm = normalizePhone(phone);
 
-  const loginDirectNoOtp = async () => {
-    setError(null);
-    if (!phoneNorm) {
-      setError(t("errFillPhoneFirst"));
-      return;
-    }
-    setLoggingIn(true);
-    try {
-      const res = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phoneNorm }),
-      });
-      const data: unknown = await res.json().catch(() => null);
-      if (!res.ok) {
-        const msg =
-          data &&
-          typeof data === "object" &&
-          "error" in data &&
-          typeof (data as { error: unknown }).error === "string"
-            ? (data as { error: string }).error
-            : t("errUnknown");
-        throw new Error(msg);
-      }
-      const session = (() => {
-        if (!data || typeof data !== "object" || !("session" in data))
-          return null;
-        const s = (data as { session?: unknown }).session;
-        if (!s || typeof s !== "object") return null;
-        const o = s as Record<string, unknown>;
-        if (typeof o.name !== "string" || typeof o.phone !== "string")
-          return null;
-        return { name: o.name, phone: o.phone } as const;
-      })();
-      if (!session) throw new Error(t("errInvalidServerResponse"));
-
-      saveStoredSession(session);
-      router.push("/profile");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t("errUnknown"));
-    } finally {
-      setLoggingIn(false);
-    }
-  };
-
   const sendOtp = async () => {
     setError(null);
     setDevOtpHint(null);
     if (!phoneNorm) {
-      setError(t("errFillPhoneFirst"));
+      setError("Vul eers jou foonnommer in.");
       return;
     }
     setSending(true);
@@ -248,7 +183,7 @@ export function LoginForm() {
           "error" in data &&
           typeof (data as { error: unknown }).error === "string"
             ? (data as { error: string }).error
-            : t("errCouldNotSendCode");
+            : "Kon nie kode stuur nie.";
         throw new Error(msg);
       }
       if (data && typeof data === "object" && "devCode" in data) {
@@ -258,25 +193,68 @@ export function LoginForm() {
       setCodeSent(true);
       setOtpCode("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("errUnknown"));
+      setError(e instanceof Error ? e.message : "Onbekende fout.");
     } finally {
       setSending(false);
     }
   };
 
-  const login = async () => {
+  const finishDevNoOtp = async () => {
     setError(null);
-    const digits = otpCode.replace(/\D/g, "");
-    if (!phoneNorm) {
-      setError(t("errFillPhoneFirst"));
+    const n = name.trim();
+    if (!n) {
+      setError("Vul jou naam in.");
       return;
     }
+    if (!phoneNorm) {
+      setError("Vul jou foonnommer in.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/register/customer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: n, phone: phoneNorm }),
+      });
+      const data: unknown = await res.json().catch(() => null);
+      if (!res.ok) {
+        const msg =
+          data &&
+          typeof data === "object" &&
+          "error" in data &&
+          typeof (data as { error: unknown }).error === "string"
+            ? (data as { error: string }).error
+            : "Kon nie rekening skep nie.";
+        throw new Error(msg);
+      }
+      saveStoredSession({ name: n, phone: phoneNorm });
+      onSuccess?.();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Onbekende fout.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const finishWithOtp = async () => {
+    setError(null);
+    const n = name.trim();
+    if (!n) {
+      setError("Vul jou naam in.");
+      return;
+    }
+    if (!phoneNorm) {
+      setError("Vul jou foonnommer in.");
+      return;
+    }
+    const digits = otpCode.replace(/\D/g, "");
     if (digits.length !== 6) {
-      setError(t("errEnterSixDigitCode"));
+      setError("Voer die 6-syfer kode in.");
       return;
     }
 
-    setVerifying(true);
+    setSubmitting(true);
     try {
       const confirmRes = await fetch("/api/verify-phone/confirm", {
         method: "POST",
@@ -291,7 +269,7 @@ export function LoginForm() {
           "error" in confirmData &&
           typeof (confirmData as { error: unknown }).error === "string"
             ? (confirmData as { error: string }).error
-            : t("errVerificationFailed");
+            : "Verifikasie het misluk.";
         throw new Error(msg);
       }
       const verificationToken =
@@ -302,13 +280,17 @@ export function LoginForm() {
           .verificationToken === "string"
           ? (confirmData as { verificationToken: string }).verificationToken
           : null;
-      if (!verificationToken) throw new Error(t("errInvalidServerResponse"));
+      if (!verificationToken)
+        throw new Error("Ongeldige antwoord van bediener.");
 
-      setLoggingIn(true);
-      const res = await fetch("/api/login", {
+      const res = await fetch("/api/register/customer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phoneNorm, verificationToken }),
+        body: JSON.stringify({
+          name: n,
+          phone: phoneNorm,
+          verificationToken,
+        }),
       });
       const data: unknown = await res.json().catch(() => null);
       if (!res.ok) {
@@ -318,127 +300,111 @@ export function LoginForm() {
           "error" in data &&
           typeof (data as { error: unknown }).error === "string"
             ? (data as { error: string }).error
-            : t("errUnknown");
+            : "Kon nie rekening skep nie.";
         throw new Error(msg);
       }
-      const session = (() => {
-        if (!data || typeof data !== "object" || !("session" in data))
-          return null;
-        const s = (data as { session?: unknown }).session;
-        if (!s || typeof s !== "object") return null;
-        const o = s as Record<string, unknown>;
-        if (typeof o.name !== "string" || typeof o.phone !== "string")
-          return null;
-        return { name: o.name, phone: o.phone } as const;
-      })();
-      if (!session) throw new Error(t("errInvalidServerResponse"));
-
-      saveStoredSession(session);
-      router.push("/profile");
+      saveStoredSession({ name: n, phone: phoneNorm });
+      onSuccess?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("errUnknown"));
+      setError(e instanceof Error ? e.message : "Onbekende fout.");
     } finally {
-      setVerifying(false);
-      setLoggingIn(false);
+      setSubmitting(false);
     }
   };
 
   return (
-    <>
-      <Title>{t("loginTitle")}</Title>
-      <Subtitle>
-        {disablePhoneOtp ? t("loginSubtitleNoOtp") : t("loginSubtitleOtp")}
-      </Subtitle>
-      <Card>
-        <Form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (disablePhoneOtp) void loginDirectNoOtp();
-            else void login();
-          }}
-        >
-          {error ? <ErrorMsg role="alert">{error}</ErrorMsg> : null}
+    <Card>
+      <Form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (disablePhoneOtp) void finishDevNoOtp();
+          else void finishWithOtp();
+        }}
+      >
+        {error ? <ErrorMsg role="alert">{error}</ErrorMsg> : null}
 
+        <Field>
+          <Label htmlFor="acct-name">Naam</Label>
+          <Input
+            id="acct-name"
+            name="name"
+            autoComplete="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Jou naam"
+            required
+          />
+        </Field>
+
+        <Field>
+          <Label htmlFor="acct-phone">Foon</Label>
+          <Input
+            id="acct-phone"
+            type="tel"
+            autoComplete="tel"
+            value={phone}
+            onChange={(e) => {
+              setPhone(e.target.value);
+              setCodeSent(false);
+              setOtpCode("");
+              setDevOtpHint(null);
+            }}
+            placeholder="Bv. 082 123 4567"
+            required
+          />
+          {!disablePhoneOtp ? (
+            <>
+              <SecondaryBtn
+                type="button"
+                onClick={() => void sendOtp()}
+                disabled={sending || !phoneNorm}
+              >
+                {sending ? "Stuur kode…" : "Stuur verifikasiekode"}
+              </SecondaryBtn>
+              {devOtpHint ? (
+                <Hint>
+                  Ontwikkeling: jou kode is <strong>{devOtpHint}</strong>
+                </Hint>
+              ) : (
+                <Hint>Ons stuur ’n 6-syfer kode om jou foon te bevestig.</Hint>
+              )}
+            </>
+          ) : (
+            <Hint>Ontwikkelmodus: geen OTP op hierdie bediener nie.</Hint>
+          )}
+        </Field>
+
+        {!disablePhoneOtp && codeSent ? (
           <Field>
-            <Label htmlFor="login-phone">{t("labelPhone")}</Label>
+            <Label htmlFor="acct-otp">6-syfer kode</Label>
             <Input
-              id="login-phone"
-              type="tel"
-              autoComplete="tel"
-              value={phone}
-              onChange={(e) => {
-                setPhone(e.target.value);
-                setCodeSent(false);
-                setOtpCode("");
-                setDevOtpHint(null);
-              }}
-              placeholder={t("placeholderPhone")}
-              required
+              id="acct-otp"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              value={otpCode}
+              onChange={(e) =>
+                setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+              }
+              placeholder="000000"
             />
-            {!disablePhoneOtp ? (
-              <>
-                <SecondaryBtn
-                  type="button"
-                  onClick={() => void sendOtp()}
-                  disabled={sending || !phoneNorm}
-                >
-                  {sending
-                    ? t("sendingVerificationCode")
-                    : t("sendVerificationCode")}
-                </SecondaryBtn>
-                {devOtpHint ? (
-                  <Hint>
-                    {t("checkoutDevOtpBannerPrefix")}
-                    <strong>{devOtpHint}</strong>
-                  </Hint>
-                ) : (
-                  <Hint>{t("loginOtpSmsHint")}</Hint>
-                )}
-              </>
-            ) : (
-              <Hint>{t("loginFillNumberHint")}</Hint>
-            )}
           </Field>
+        ) : null}
 
-          {!disablePhoneOtp && codeSent ? (
-            <Field>
-              <Label htmlFor="login-otp">{t("otpCodeLabel")}</Label>
-              <Input
-                id="login-otp"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength={6}
-                value={otpCode}
-                onChange={(e) =>
-                  setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))
-                }
-                placeholder="000000"
-              />
-            </Field>
-          ) : null}
-
-          <PrimaryBtn
-            type="submit"
-            disabled={
-              disablePhoneOtp
-                ? !phoneNorm || loggingIn
-                : !codeSent ||
-                  verifying ||
-                  loggingIn ||
-                  otpCode.replace(/\D/g, "").length !== 6
-            }
-          >
-            {verifying || loggingIn ? t("busy") : t("signIn")}
-          </PrimaryBtn>
-
-          <Hint>
-            {t("loginNewUserHintPrefix")}{" "}
-            <Link href="/profile">{t("loginNewUserHintAccount")}</Link>{" "}
-            {t("or") ?? "of"}{" "}
-            <Link href="/shop">{t("loginNewUserHintShop")}</Link>.
-          </Hint>
-        </Form>
-      </Card>
-    </>
+        <PrimaryBtn
+          type="submit"
+          disabled={
+            disablePhoneOtp
+              ? !name.trim() || !phoneNorm || submitting
+              : !codeSent ||
+                !name.trim() ||
+                submitting ||
+                otpCode.replace(/\D/g, "").length !== 6
+          }
+        >
+          {submitting ? "Besig…" : "Gaan voort"}
+        </PrimaryBtn>
+      </Form>
+    </Card>
   );
 }

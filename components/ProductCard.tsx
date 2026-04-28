@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import styled from "styled-components";
 import { useCart } from "@/lib/cart-context";
+import { loadStoredSession } from "@/lib/session-storage";
+import { useLanguage } from "@/lib/useLanguage";
 import type { Product } from "@/types/product";
 
 const Card = styled.article`
@@ -28,7 +30,7 @@ const Card = styled.article`
 
 const Thumb = styled.div<{ $hasImage: boolean }>`
   position: relative;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 4 / 5;
   background: ${({ $hasImage, theme }) =>
     $hasImage
       ? "#e8ebe4"
@@ -146,8 +148,52 @@ function formatPrice(value: number) {
 
 export function ProductCard({ product }: { product: Product }) {
   const { addToCart } = useCart();
+  const { t } = useLanguage();
   const [addError, setAddError] = useState<string | null>(null);
+  const [ownedStoreIds, setOwnedStoreIds] = useState<Set<string> | null>(null);
   const hasImage = Boolean(product.image);
+
+  // Best-effort UX: hide/disable add-to-cart for your own products.
+  // Server-side enforcement is in POST /api/orders.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (ownedStoreIds !== null) return;
+    const session = loadStoredSession();
+    if (!session) {
+      /* eslint-disable react-hooks/set-state-in-effect -- initialize from localStorage after mount */
+      setOwnedStoreIds(new Set());
+      /* eslint-enable react-hooks/set-state-in-effect */
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/stores/my?phone=${encodeURIComponent(session.phone)}`)
+      .then((r) => r.json())
+      .then((data: unknown) => {
+        if (cancelled) return;
+        const stores =
+          data && typeof data === "object" && "stores" in data
+            ? (data as { stores: unknown }).stores
+            : [];
+        const ids = Array.isArray(stores)
+          ? stores
+              .map((s) =>
+                s && typeof s === "object" && "id" in s
+                  ? (s as { id?: unknown }).id
+                  : null,
+              )
+              .filter((x): x is string => typeof x === "string")
+          : [];
+        setOwnedStoreIds(new Set(ids));
+      })
+      .catch(() => {
+        if (!cancelled) setOwnedStoreIds(new Set());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ownedStoreIds]);
+
+  const isOwnProduct = ownedStoreIds?.has(product.vendorId) ?? false;
 
   return (
     <Card>
@@ -167,7 +213,12 @@ export function ProductCard({ product }: { product: Product }) {
           {addError ? <AddError role="alert">{addError}</AddError> : null}
           <AddButton
             type="button"
+            disabled={isOwnProduct}
             onClick={() => {
+              if (isOwnProduct) {
+                setAddError(t("cannotBuyOwnProducts"));
+                return;
+              }
               const r = addToCart({
                 productId: product.id,
                 name: product.title,
@@ -181,7 +232,7 @@ export function ProductCard({ product }: { product: Product }) {
               else setAddError(null);
             }}
           >
-            Voeg by mandjie
+            {t("addToCart")}
           </AddButton>
         </Footer>
       </Body>

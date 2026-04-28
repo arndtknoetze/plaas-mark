@@ -2,10 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { Container } from "@/components/Container";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { useCart } from "@/lib/cart-context";
+import { useLanguage } from "@/lib/useLanguage";
 import {
   clearStoredSession,
   loadStoredSession,
@@ -67,57 +70,10 @@ const Brand = styled(Link)`
   }
 `;
 
-const LocationHint = styled.span`
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  color: ${({ theme }) => theme.colors.textLight};
-  line-height: 1.15;
-  max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding-left: 2px;
-
-  @media (min-width: 768px) {
-    font-size: 0.75rem;
-    max-width: 260px;
-  }
-`;
-
 const Actions = styled.div`
   display: flex;
   align-items: center;
   gap: 4px;
-`;
-
-const RegisterLink = styled(Link)`
-  display: none;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 0 12px;
-  border-radius: 10px;
-  font-size: 0.8125rem;
-  font-weight: 800;
-  color: #ffffff;
-  background: ${({ theme }) => theme.colors.primary};
-  text-decoration: none;
-  white-space: nowrap;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
-
-  @media (min-width: 768px) {
-    display: inline-flex;
-  }
-
-  &:hover {
-    background: ${({ theme }) => theme.colors.secondary};
-  }
-
-  &:focus-visible {
-    outline: 2px solid ${({ theme }) => theme.colors.accent};
-    outline-offset: 2px;
-  }
 `;
 
 const IconButton = styled.button`
@@ -306,6 +262,8 @@ const CartLink = styled(Link)`
   }
 `;
 
+const BellLink = styled(CartLink)``;
+
 const CartBadge = styled.span`
   position: absolute;
   top: 4px;
@@ -322,11 +280,39 @@ const CartBadge = styled.span`
   background: ${({ theme }) => theme.colors.accent};
 `;
 
+const NotifBadge = styled(CartBadge)`
+  min-width: 18px;
+  height: 18px;
+  line-height: 18px;
+  font-size: 0.625rem;
+`;
+
 function CartIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path
         d="M9 22a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function BellIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 7h18s-3 0-3-7"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M13.73 21a2 2 0 0 1-3.46 0"
         stroke="currentColor"
         strokeWidth="1.75"
         strokeLinecap="round"
@@ -350,11 +336,16 @@ function MenuIcon() {
 }
 
 export function Header({ location }: { location: PublicLocation | null }) {
+  const { t } = useLanguage();
+  const router = useRouter();
   const { items } = useCart();
   const count = items.reduce((sum, line) => sum + line.quantity, 0);
   const [session, setSession] = useState<StoredSession | null>(() =>
     loadStoredSession(),
   );
+  const [storesLoaded, setStoresLoaded] = useState(false);
+  const [hasNoStoreInArea, setHasNoStoreInArea] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -364,9 +355,74 @@ export function Header({ location }: { location: PublicLocation | null }) {
         setSession(loadStoredSession());
       }
     };
+    const onSession = () => setSession(loadStoredSession());
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    window.addEventListener("plaasmark-session", onSession);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("plaasmark-session", onSession);
+    };
   }, []);
+
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    fetch(`/api/stores/my?phone=${encodeURIComponent(session.phone)}`)
+      .then((r) => r.json())
+      .then((data: unknown) => {
+        if (cancelled) return;
+        const stores =
+          data && typeof data === "object" && "stores" in data
+            ? (data as { stores: unknown }).stores
+            : null;
+        setHasNoStoreInArea(Array.isArray(stores) && stores.length === 0);
+        setStoresLoaded(true);
+      })
+      .catch(() => {
+        if (!cancelled) setStoresLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+
+    const loadUnread = async () => {
+      try {
+        const res = await fetch(
+          `/api/notifications/unread-count?phone=${encodeURIComponent(session.phone)}`,
+          { cache: "no-store" },
+        );
+        const data = (await res.json().catch(() => ({}))) as {
+          unread?: unknown;
+        };
+        const n = typeof data.unread === "number" ? data.unread : 0;
+        if (!cancelled) setUnreadNotifications(Math.max(0, Math.floor(n)));
+      } catch {
+        if (!cancelled) setUnreadNotifications(0);
+      }
+    };
+
+    void loadUnread();
+    const onFocus = () => void loadUnread();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [session]);
+
+  useEffect(() => {
+    if (session) return;
+    /* eslint-disable react-hooks/set-state-in-effect -- reset seller CTA when logged out */
+    setStoresLoaded(false);
+    setHasNoStoreInArea(false);
+    setUnreadNotifications(0);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [session]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -393,31 +449,57 @@ export function Header({ location }: { location: PublicLocation | null }) {
     <Bar>
       <Inner>
         <BrandCluster>
-          <Brand href="/shop">
+          <Brand
+            href="/shop"
+            aria-label={
+              location?.name ? `PlaasMark (${location.name})` : "PlaasMark"
+            }
+          >
             <Image
               src="/logo.png"
               alt="PlaasMark"
               fill
-              sizes="(max-width: 767px) 198px, 228px"
+              sizes="(max-width: 767px) 258px, 300px"
               priority
               style={{ objectFit: "contain", objectPosition: "left center" }}
             />
           </Brand>
-          {location?.name ? (
-            <LocationHint aria-label={`PlaasMark ${location.name}`}>
-              {location.name}
-            </LocationHint>
-          ) : null}
         </BrandCluster>
         <Actions>
-          {!session ? (
-            <RegisterLink href="/register">Registreer</RegisterLink>
+          <ShopLink href="/shop">{t("shop")}</ShopLink>
+          <OrdersLink href="/my-orders">{t("myOrders")}</OrdersLink>
+          {session ? (
+            <OrdersLink href="/activity">{t("activity")}</OrdersLink>
           ) : null}
-          <ShopLink href="/shop">Winkel</ShopLink>
-          <OrdersLink href="/my-orders">My orders</OrdersLink>
+          {session ? (
+            <OrdersLink href="/profile">{t("account")}</OrdersLink>
+          ) : null}
+          {session && storesLoaded && hasNoStoreInArea ? (
+            <OrdersLink href="/begin-verkoop">{t("beginSelling")}</OrdersLink>
+          ) : null}
+          {session ? (
+            <BellLink
+              href="/activity"
+              aria-label={
+                unreadNotifications > 0
+                  ? `${t("activity")}, ${unreadNotifications}`
+                  : t("activity")
+              }
+            >
+              <BellIcon />
+              {unreadNotifications > 0 ? (
+                <NotifBadge>
+                  {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                </NotifBadge>
+              ) : null}
+            </BellLink>
+          ) : null}
+          <LanguageToggle />
           <CartLink
             href="/cart"
-            aria-label={count ? `Mandjie, ${count} items` : "Mandjie"}
+            aria-label={
+              count ? `${t("cart")}, ${count} ${t("itemsWord")}` : t("cart")
+            }
           >
             <CartIcon />
             {count > 0 ? (
@@ -427,7 +509,7 @@ export function Header({ location }: { location: PublicLocation | null }) {
           <MenuWrap ref={menuRef}>
             <IconButton
               type="button"
-              aria-label="Menu"
+              aria-label={t("menu")}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((v) => !v)}
@@ -435,7 +517,7 @@ export function Header({ location }: { location: PublicLocation | null }) {
               <MenuIcon />
             </IconButton>
             {menuOpen ? (
-              <Menu role="menu" aria-label="User menu">
+              <Menu role="menu" aria-label={t("menu")}>
                 {session ? (
                   <MenuMeta>
                     <MenuName>{session.name}</MenuName>
@@ -443,37 +525,49 @@ export function Header({ location }: { location: PublicLocation | null }) {
                   </MenuMeta>
                 ) : null}
 
-                {!session ? (
-                  <>
-                    <MenuItem role="menuitem" href="/register">
-                      Registreer
-                    </MenuItem>
-                    <MenuItem role="menuitem" href="/login">
-                      Meld aan
-                    </MenuItem>
-                  </>
-                ) : (
-                  <>
-                    <MenuItem role="menuitem" href="/profile">
-                      Profiel
-                    </MenuItem>
-                    <MenuButton
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        clearStoredSession();
-                        setSession(null);
-                        setMenuOpen(false);
-                      }}
-                    >
-                      Teken uit
-                    </MenuButton>
-                  </>
-                )}
-
-                <MenuItem role="menuitem" href="/my-orders">
-                  My orders
+                <MenuItem role="menuitem" href="/shop">
+                  {t("shop")}
                 </MenuItem>
+                <MenuItem role="menuitem" href="/my-orders">
+                  {t("myOrders")}
+                </MenuItem>
+                {session ? (
+                  <MenuItem role="menuitem" href="/activity">
+                    {t("activity")}
+                  </MenuItem>
+                ) : (
+                  <MenuItem role="menuitem" href="/login">
+                    {t("signIn")}
+                  </MenuItem>
+                )}
+                {session ? (
+                  <MenuItem role="menuitem" href="/profile">
+                    {t("account")}
+                  </MenuItem>
+                ) : null}
+                {session && storesLoaded && hasNoStoreInArea ? (
+                  <MenuItem role="menuitem" href="/begin-verkoop">
+                    {t("beginSelling")}
+                  </MenuItem>
+                ) : null}
+
+                {session ? (
+                  <MenuButton
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      clearStoredSession();
+                      setSession(null);
+                      setStoresLoaded(false);
+                      setHasNoStoreInArea(false);
+                      setUnreadNotifications(0);
+                      setMenuOpen(false);
+                      router.replace("/");
+                    }}
+                  >
+                    {t("signOut")}
+                  </MenuButton>
+                ) : null}
               </Menu>
             ) : null}
           </MenuWrap>
