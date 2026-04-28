@@ -34,6 +34,13 @@ async function main() {
   await seedLocations(prisma);
   const hasMemberRole = await memberRoleColumnExists();
 
+  // Production safety: never restore local snapshots or delete/overwrite data.
+  // We only ensure the core tenant locations exist.
+  if (process.env.NODE_ENV === "production") {
+    console.log("Production seed: ensured locations only.");
+    return;
+  }
+
   // Optional: if you have a snapshot, restore it for repeatable dev resets.
   // You can create/update the snapshot from your current DB with:
   //   node scripts/export-seed-snapshot.mjs
