@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import styled from "styled-components";
 import { useLanguage } from "@/lib/useLanguage";
 import { loadStoredCustomer } from "@/lib/customer-storage";
@@ -358,6 +359,7 @@ function matchesFilter(order: OrderRow, q: string): boolean {
 
 export default function MyOrdersPage() {
   const { t } = useLanguage();
+  const router = useRouter();
   const [clientReady, setClientReady] = useState(false);
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
@@ -370,6 +372,14 @@ export default function MyOrdersPage() {
     setClientReady(true);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
+
+  useEffect(() => {
+    if (!clientReady) return;
+    // Session is stored in localStorage, so access control must be client-side.
+    if (!loadStoredSession()) {
+      router.replace("/login");
+    }
+  }, [clientReady, router]);
 
   const fetchOrdersForPhone = useCallback(
     async (rawPhone: string) => {
@@ -424,6 +434,10 @@ export default function MyOrdersPage() {
   const savedPhone = clientReady ? getSavedPhoneForOrders() : "";
   const needsPhoneFirst =
     clientReady && orders === null && !loading && !savedPhone;
+
+  if (clientReady && !loadStoredSession()) {
+    return null;
+  }
 
   const handlePhoneLoad = (e: React.FormEvent) => {
     e.preventDefault();

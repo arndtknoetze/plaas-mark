@@ -177,7 +177,8 @@ function isSellerRow(x: unknown): x is SellerRow {
 }
 
 export function HomeClient() {
-  const [name] = useState(() => loadStoredSession()?.name ?? null);
+  const [session] = useState(() => loadStoredSession());
+  const name = session?.name ?? null;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sellers, setSellers] = useState<SellerRow[]>([]);
@@ -221,7 +222,9 @@ export function HomeClient() {
         </HeroText>
         <HeroActions>
           <Primary href="/shop">Begin inkopies</Primary>
-          <Secondary href="/my-orders">My bestellings</Secondary>
+          {session ? (
+            <Secondary href="/my-orders">My bestellings</Secondary>
+          ) : null}
         </HeroActions>
       </Hero>
 

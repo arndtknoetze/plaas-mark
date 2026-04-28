@@ -467,7 +467,9 @@ export function Header({ location }: { location: PublicLocation | null }) {
         </BrandCluster>
         <Actions>
           <ShopLink href="/shop">{t("shop")}</ShopLink>
-          <OrdersLink href="/my-orders">{t("myOrders")}</OrdersLink>
+          {session ? (
+            <OrdersLink href="/my-orders">{t("myOrders")}</OrdersLink>
+          ) : null}
           {session ? (
             <OrdersLink href="/activity">{t("activity")}</OrdersLink>
           ) : null}
@@ -528,9 +530,11 @@ export function Header({ location }: { location: PublicLocation | null }) {
                 <MenuItem role="menuitem" href="/shop">
                   {t("shop")}
                 </MenuItem>
-                <MenuItem role="menuitem" href="/my-orders">
-                  {t("myOrders")}
-                </MenuItem>
+                {session ? (
+                  <MenuItem role="menuitem" href="/my-orders">
+                    {t("myOrders")}
+                  </MenuItem>
+                ) : null}
                 {session ? (
                   <MenuItem role="menuitem" href="/activity">
                     {t("activity")}

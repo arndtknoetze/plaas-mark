@@ -912,7 +912,6 @@ export default function ProfilePage() {
             <Subtitle>{t("activitySignInPrompt")}</Subtitle>
             <TopLinks>
               <PillLink href="/shop">{t("shop")}</PillLink>
-              <PillLink href="/my-orders">{t("myOrders")}</PillLink>
             </TopLinks>
           </TopInner>
         </DashboardTop>
