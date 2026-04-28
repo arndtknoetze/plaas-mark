@@ -27,7 +27,14 @@ export default async function HomePage() {
   const locations = AREA_CHOICES.map(({ slug, label }) => ({
     label,
     href: buildLocationEntryUrl(slug, h),
+    imageUrl: `https://picsum.photos/seed/plaasmark-${slug}/900/520`,
   }));
 
-  return <LocationSelector headingKey="selectLocation" locations={locations} />;
+  return (
+    <LocationSelector
+      headingKey="welcomeTitle"
+      leadKey="selectLocationLead"
+      locations={locations}
+    />
+  );
 }

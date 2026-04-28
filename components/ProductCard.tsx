@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import styled from "styled-components";
 import { useCart } from "@/lib/cart-context";
 import { loadStoredSession } from "@/lib/session-storage";
 import { useLanguage } from "@/lib/useLanguage";
+import { slugify } from "@/lib/slug";
 import type { Product } from "@/types/product";
 
 const Card = styled.article`
@@ -70,10 +72,25 @@ const Title = styled.h3`
   }
 `;
 
-const Vendor = styled.span`
+const VendorLink = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 750;
   color: ${({ theme }) => theme.colors.textLight};
+  text-decoration: none;
+
+  &:hover {
+    color: ${({ theme }) => theme.colors.primary};
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.colors.accent};
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
 `;
 
 const Meta = styled.div`
@@ -194,6 +211,10 @@ export function ProductCard({ product }: { product: Product }) {
   }, [ownedStoreIds]);
 
   const isOwnProduct = ownedStoreIds?.has(product.vendorId) ?? false;
+  const vendorHref =
+    product.vendorName && product.vendorId
+      ? `/shop/${slugify(product.vendorName) || "store"}--${encodeURIComponent(product.vendorId)}`
+      : null;
 
   return (
     <Card>
@@ -204,7 +225,9 @@ export function ProductCard({ product }: { product: Product }) {
       </Thumb>
       <Body>
         <Title>{product.title}</Title>
-        {product.vendorName ? <Vendor>{product.vendorName}</Vendor> : null}
+        {vendorHref ? (
+          <VendorLink href={vendorHref}>{product.vendorName}</VendorLink>
+        ) : null}
         <Meta>
           <Price>{formatPrice(product.price)}</Price>
           {product.unit ? <Unit>{product.unit}</Unit> : null}

@@ -15,6 +15,7 @@ import {
 
 type StoreRow = {
   id: string;
+  locationId: string;
   name: string;
   slug: string;
   isActive: boolean;
@@ -403,6 +404,10 @@ const Select = styled.select`
   }
 `;
 
+const SmallSelect = styled(Select)`
+  font-weight: 750;
+`;
+
 const Form = styled.form`
   display: flex;
   flex-direction: column;
@@ -743,6 +748,9 @@ export default function ProfilePage() {
   const [hydrated, setHydrated] = useState(false);
   const [session, setSession] = useState<StoredSession | null>(null);
   const [stores, setStores] = useState<StoreRow[]>([]);
+  const [locations, setLocations] = useState<
+    { id: string; name: string; slug: string }[]
+  >([]);
   const [loadingStores, setLoadingStores] = useState(false);
   const [storeError, setStoreError] = useState<string | null>(null);
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
@@ -812,6 +820,37 @@ export default function ProfilePage() {
       cancelled = true;
     };
   }, [hydrated, session, initialStoreParam, t]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/locations", { cache: "no-store" });
+        const data: unknown = await res.json().catch(() => null);
+        const list =
+          data &&
+          typeof data === "object" &&
+          "locations" in data &&
+          Array.isArray((data as { locations?: unknown }).locations)
+            ? ((data as { locations: unknown[] }).locations as unknown[])
+            : [];
+        const parsed = list.filter(
+          (x): x is { id: string; name: string; slug: string } =>
+            Boolean(x) &&
+            typeof x === "object" &&
+            typeof (x as { id?: unknown }).id === "string" &&
+            typeof (x as { name?: unknown }).name === "string" &&
+            typeof (x as { slug?: unknown }).slug === "string",
+        );
+        if (!cancelled) setLocations(parsed);
+      } catch {
+        if (!cancelled) setLocations([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const selected = stores.find((s) => s.id === selectedStoreId) ?? null;
   const [draft, setDraft] = useState<StoreRow | null>(() => selected);
@@ -1153,6 +1192,7 @@ export default function ProfilePage() {
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                           phone: session.phone,
+                          locationId: draft.locationId,
                           name: draft.name,
                           isActive: draft.isActive,
                           brandColor: draft.brandColor,
@@ -1191,6 +1231,31 @@ export default function ProfilePage() {
                     }
                   }}
                 >
+                  {locations.length > 0 ? (
+                    <Field>
+                      <Label htmlFor="store-location">Area / Location</Label>
+                      <SmallSelect
+                        id="store-location"
+                        value={draft.locationId}
+                        onChange={(e) =>
+                          setDraft((d) =>
+                            d ? { ...d, locationId: e.target.value } : d,
+                          )
+                        }
+                      >
+                        {locations.map((l) => (
+                          <option key={l.id} value={l.id}>
+                            {l.name} ({l.slug})
+                          </option>
+                        ))}
+                      </SmallSelect>
+                      <Hint>
+                        If you change this, the store may disappear from this
+                        list when you refresh (because this page is scoped to
+                        the current subdomain).
+                      </Hint>
+                    </Field>
+                  ) : null}
                   <Field>
                     <Label htmlFor="store-name">{t("storeNameLabel")}</Label>
                     <Input

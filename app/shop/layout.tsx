@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Winkel",
+  title: "Shop",
 };
 
 export default function ShopLayout({

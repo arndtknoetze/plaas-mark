@@ -12,6 +12,7 @@ import {
 import { type Language, translations } from "@/lib/i18n";
 
 const STORAGE_KEY = "plaasmark-lang";
+const COOKIE_KEY = "plaasmark-lang";
 const LANG_EVENT = "plaasmark-lang";
 
 export type TranslationKey = keyof (typeof translations)["af"];
@@ -35,12 +36,29 @@ function readStoredLanguage(): Language {
   return "af";
 }
 
-export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>("af");
+function writeLanguageCookie(lang: Language) {
+  try {
+    const maxAge = 60 * 60 * 24 * 365; // 1 year
+    document.cookie = `${COOKIE_KEY}=${lang}; Path=/; Max-Age=${maxAge}; SameSite=Lax`;
+  } catch {
+    /* ignore */
+  }
+}
+
+export function LanguageProvider({
+  children,
+  initialLanguage = "af",
+}: {
+  children: ReactNode;
+  initialLanguage?: Language;
+}) {
+  const [language, setLanguageState] = useState<Language>(initialLanguage);
 
   useEffect(() => {
     const sync = () => {
-      setLanguageState(readStoredLanguage());
+      const next = readStoredLanguage();
+      setLanguageState(next);
+      writeLanguageCookie(next);
     };
     sync();
     window.addEventListener(LANG_EVENT, sync);
@@ -55,6 +73,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     setLanguageState(lang);
     try {
       localStorage.setItem(STORAGE_KEY, lang);
+      writeLanguageCookie(lang);
       window.dispatchEvent(new Event(LANG_EVENT));
     } catch {
       /* ignore quota / private mode */

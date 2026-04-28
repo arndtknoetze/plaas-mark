@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { LanguageProvider } from "@/components/LanguageProvider";
 import { Shell } from "@/components/Shell";
 import { getPublicLocationOrNull } from "@/lib/location";
 import { StyledComponentsRegistry } from "@/lib/styled-registry";
 import { theme } from "@/styles/theme";
+import type { Language } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: {
@@ -32,12 +34,15 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const location = await getPublicLocationOrNull();
+  const cookieStore = await cookies();
+  const rawLang = cookieStore.get("plaasmark-lang")?.value ?? "af";
+  const initialLanguage: Language = rawLang === "en" ? "en" : "af";
 
   return (
     <html lang="en">
       <body style={{ backgroundColor: theme.colors.background }}>
         <StyledComponentsRegistry>
-          <LanguageProvider>
+          <LanguageProvider initialLanguage={initialLanguage}>
             <Shell location={location}>{children}</Shell>
           </LanguageProvider>
         </StyledComponentsRegistry>

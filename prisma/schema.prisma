@@ -16,6 +16,7 @@ model Member {
   stores        Store[]
   orders        Order[]
   notifications Notification[]
+  analyticsSessions AnalyticsSession[]
 }
 
 model Notification {
@@ -39,6 +40,7 @@ model Location {
 
   stores Store[]
   orders Order[]
+  analyticsEvents AnalyticsEvent[]
 }
 
 model Store {
@@ -71,6 +73,7 @@ model Store {
   @@index([slug])
 
   products Product[]
+  analyticsEvents AnalyticsEvent[]
 }
 
 model Product {
@@ -98,6 +101,7 @@ model Order {
   notes       String?
   createdAt   DateTime    @default(now())
   items       OrderItem[]
+  analyticsEvents AnalyticsEvent[]
 
   @@index([memberId])
   @@index([locationId])
@@ -195,4 +199,15 @@ model AnalyticsEvent {
   @@index([locationId, createdAt])
   @@index([storeId, createdAt])
   @@index([orderId])
+}
+
+/// Email-only signup list for "notify me when live".
+model WaitlistSignup {
+  id         String   @id @default(cuid())
+  email      String
+  emailLower String   @unique
+  source     String?  @db.VarChar(191)
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
 }

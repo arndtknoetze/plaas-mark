@@ -3,6 +3,7 @@
 import Link from "next/link";
 import styled from "styled-components";
 import { useCart } from "@/lib/cart-context";
+import { useLanguage } from "@/lib/useLanguage";
 
 const Title = styled.h1`
   margin: 0 0 20px;
@@ -149,13 +150,14 @@ function formatPrice(value: number) {
 
 export default function CartPage() {
   const { items, removeFromCart } = useCart();
+  const { t } = useLanguage();
 
   return (
     <>
-      <BackLink href="/shop">← Terug na winkel</BackLink>
-      <Title>Jou mandjie</Title>
+      <BackLink href="/shop">{t("backToShop")}</BackLink>
+      <Title>{t("yourCart")}</Title>
       {items.length === 0 ? (
-        <Empty>Jou mandjie is leeg.</Empty>
+        <Empty>{t("cartEmpty")}</Empty>
       ) : (
         <List>
           {items.map((line) => (
@@ -174,14 +176,14 @@ export default function CartPage() {
                 type="button"
                 onClick={() => removeFromCart(line.productId)}
               >
-                Verwyder
+                {t("remove")}
               </RemoveBtn>
             </Row>
           ))}
         </List>
       )}
       {items.length > 0 ? (
-        <CheckoutLink href="/checkout">Gaan na betaal</CheckoutLink>
+        <CheckoutLink href="/checkout">{t("goToCheckout")}</CheckoutLink>
       ) : null}
     </>
   );

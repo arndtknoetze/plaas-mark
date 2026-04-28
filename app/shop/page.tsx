@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { ProductCard } from "@/components/ProductCard";
+import { useLanguage } from "@/lib/useLanguage";
 import type { Product } from "@/types/product";
 
 const PageTitle = styled.h1`
@@ -141,6 +142,7 @@ function parseStoresPayload(body: unknown): StoreOption[] {
 }
 
 export default function ShopPage() {
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -165,7 +167,7 @@ export default function ShopPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -188,12 +190,12 @@ export default function ShopPage() {
             "error" in prodBody &&
             typeof (prodBody as { error: unknown }).error === "string"
               ? (prodBody as { error: string }).error
-              : "Kon nie produkte laai nie.";
+              : t("errUnknown");
           throw new Error(msg);
         }
 
         if (!Array.isArray(prodBody)) {
-          throw new Error("Ongeldige antwoord (produkte).");
+          throw new Error(t("errInvalidServerResponse"));
         }
 
         const parsedStores = storeRes.ok ? parseStoresPayload(storeBody) : [];
@@ -205,7 +207,7 @@ export default function ShopPage() {
         }
       } catch (e) {
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Onbekende fout.");
+          setError(e instanceof Error ? e.message : t("errUnknown"));
         }
       } finally {
         if (!cancelled) {
@@ -217,7 +219,7 @@ export default function ShopPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -235,36 +237,36 @@ export default function ShopPage() {
 
   return (
     <>
-      <PageTitle>Winkel</PageTitle>
-      {areaLabel ? <AreaHint>Gebied: {areaLabel}</AreaHint> : null}
+      <PageTitle>{t("shop")}</PageTitle>
+      {areaLabel ? (
+        <AreaHint>{t("areaLabel", { area: areaLabel })}</AreaHint>
+      ) : null}
       {loading ? (
-        <Message>Laai…</Message>
+        <Message>{t("loading")}</Message>
       ) : error ? (
         <Message role="alert">{error}</Message>
       ) : !hasStoresOrProducts ? (
-        <Message>
-          Nog geen aktiewe winkels of produkte in hierdie gebied nie.
-        </Message>
+        <Message>{t("noActiveStoresOrProducts")}</Message>
       ) : (
         <>
           <Filters>
             <Field>
-              <Label htmlFor="shop-search">Soek</Label>
+              <Label htmlFor="shop-search">{t("searchLabel")}</Label>
               <Input
                 id="shop-search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Soek produkte of verkoper…"
+                placeholder={t("searchPlaceholder")}
               />
             </Field>
             <Field>
-              <Label htmlFor="shop-store">Winkel</Label>
+              <Label htmlFor="shop-store">{t("storeFilterLabel")}</Label>
               <Select
                 id="shop-store"
                 value={store}
                 onChange={(e) => setStore(e.target.value)}
               >
-                <option value="all">Alle winkels</option>
+                <option value="all">{t("allStores")}</option>
                 {stores.map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.name}
@@ -273,7 +275,7 @@ export default function ShopPage() {
               </Select>
               {store !== "all" ? (
                 <Message style={{ marginTop: 6 }}>
-                  Bekyk winkelblad:{" "}
+                  {t("viewStorePage")}{" "}
                   {(() => {
                     const v = stores.find((x) => x.id === store);
                     return v ? (
@@ -290,9 +292,9 @@ export default function ShopPage() {
           </Filters>
 
           {products.length === 0 ? (
-            <Message>Geen produkte beskikbaar nie.</Message>
+            <Message>{t("noProductsAvailable")}</Message>
           ) : filtered.length === 0 ? (
-            <Message>Geen produkte pas by jou filters nie.</Message>
+            <Message>{t("noProductsMatchFilters")}</Message>
           ) : (
             <Grid>
               {filtered.map((product) => (

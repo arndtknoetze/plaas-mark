@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import styled from "styled-components";
+import { useLanguage } from "@/lib/useLanguage";
 import { saveStoredSession } from "@/lib/session-storage";
 
 const Card = styled.div`
@@ -130,6 +131,7 @@ type Props = {
 };
 
 export function AccountOtpForm({ onSuccess }: Props) {
+  const { t } = useLanguage();
   const [disablePhoneOtp, setDisablePhoneOtp] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -165,7 +167,7 @@ export function AccountOtpForm({ onSuccess }: Props) {
     setError(null);
     setDevOtpHint(null);
     if (!phoneNorm) {
-      setError("Vul eers jou foonnommer in.");
+      setError(t("errFillPhoneFirst"));
       return;
     }
     setSending(true);
@@ -183,7 +185,7 @@ export function AccountOtpForm({ onSuccess }: Props) {
           "error" in data &&
           typeof (data as { error: unknown }).error === "string"
             ? (data as { error: string }).error
-            : "Kon nie kode stuur nie.";
+            : t("errCouldNotSendCode");
         throw new Error(msg);
       }
       if (data && typeof data === "object" && "devCode" in data) {
@@ -193,7 +195,7 @@ export function AccountOtpForm({ onSuccess }: Props) {
       setCodeSent(true);
       setOtpCode("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Onbekende fout.");
+      setError(e instanceof Error ? e.message : t("errUnknown"));
     } finally {
       setSending(false);
     }
@@ -203,11 +205,11 @@ export function AccountOtpForm({ onSuccess }: Props) {
     setError(null);
     const n = name.trim();
     if (!n) {
-      setError("Vul jou naam in.");
+      setError(t("errEnterName"));
       return;
     }
     if (!phoneNorm) {
-      setError("Vul jou foonnommer in.");
+      setError(t("errFillPhoneFirst"));
       return;
     }
     setSubmitting(true);
@@ -225,13 +227,13 @@ export function AccountOtpForm({ onSuccess }: Props) {
           "error" in data &&
           typeof (data as { error: unknown }).error === "string"
             ? (data as { error: string }).error
-            : "Kon nie rekening skep nie.";
+            : t("errCouldNotPlaceOrder");
         throw new Error(msg);
       }
       saveStoredSession({ name: n, phone: phoneNorm });
       onSuccess?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Onbekende fout.");
+      setError(e instanceof Error ? e.message : t("errUnknown"));
     } finally {
       setSubmitting(false);
     }
@@ -241,16 +243,16 @@ export function AccountOtpForm({ onSuccess }: Props) {
     setError(null);
     const n = name.trim();
     if (!n) {
-      setError("Vul jou naam in.");
+      setError(t("errEnterName"));
       return;
     }
     if (!phoneNorm) {
-      setError("Vul jou foonnommer in.");
+      setError(t("errFillPhoneFirst"));
       return;
     }
     const digits = otpCode.replace(/\D/g, "");
     if (digits.length !== 6) {
-      setError("Voer die 6-syfer kode in.");
+      setError(t("errEnterSixDigitCode"));
       return;
     }
 
@@ -269,7 +271,7 @@ export function AccountOtpForm({ onSuccess }: Props) {
           "error" in confirmData &&
           typeof (confirmData as { error: unknown }).error === "string"
             ? (confirmData as { error: string }).error
-            : "Verifikasie het misluk.";
+            : t("errVerificationFailed");
         throw new Error(msg);
       }
       const verificationToken =
@@ -280,8 +282,7 @@ export function AccountOtpForm({ onSuccess }: Props) {
           .verificationToken === "string"
           ? (confirmData as { verificationToken: string }).verificationToken
           : null;
-      if (!verificationToken)
-        throw new Error("Ongeldige antwoord van bediener.");
+      if (!verificationToken) throw new Error(t("errInvalidServerResponse"));
 
       const res = await fetch("/api/register/customer", {
         method: "POST",
@@ -300,13 +301,13 @@ export function AccountOtpForm({ onSuccess }: Props) {
           "error" in data &&
           typeof (data as { error: unknown }).error === "string"
             ? (data as { error: string }).error
-            : "Kon nie rekening skep nie.";
+            : t("errCouldNotPlaceOrder");
         throw new Error(msg);
       }
       saveStoredSession({ name: n, phone: phoneNorm });
       onSuccess?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Onbekende fout.");
+      setError(e instanceof Error ? e.message : t("errUnknown"));
     } finally {
       setSubmitting(false);
     }
@@ -324,20 +325,20 @@ export function AccountOtpForm({ onSuccess }: Props) {
         {error ? <ErrorMsg role="alert">{error}</ErrorMsg> : null}
 
         <Field>
-          <Label htmlFor="acct-name">Naam</Label>
+          <Label htmlFor="acct-name">{t("labelName")}</Label>
           <Input
             id="acct-name"
             name="name"
             autoComplete="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Jou naam"
+            placeholder={t("placeholderFullName")}
             required
           />
         </Field>
 
         <Field>
-          <Label htmlFor="acct-phone">Foon</Label>
+          <Label htmlFor="acct-phone">{t("labelPhone")}</Label>
           <Input
             id="acct-phone"
             type="tel"
@@ -349,7 +350,7 @@ export function AccountOtpForm({ onSuccess }: Props) {
               setOtpCode("");
               setDevOtpHint(null);
             }}
-            placeholder="Bv. 082 123 4567"
+            placeholder={t("placeholderPhone")}
             required
           />
           {!disablePhoneOtp ? (
@@ -359,24 +360,27 @@ export function AccountOtpForm({ onSuccess }: Props) {
                 onClick={() => void sendOtp()}
                 disabled={sending || !phoneNorm}
               >
-                {sending ? "Stuur kode…" : "Stuur verifikasiekode"}
+                {sending
+                  ? t("sendingVerificationCode")
+                  : t("sendVerificationCode")}
               </SecondaryBtn>
               {devOtpHint ? (
                 <Hint>
-                  Ontwikkeling: jou kode is <strong>{devOtpHint}</strong>
+                  {t("checkoutDevOtpBannerPrefix")}
+                  <strong>{devOtpHint}</strong>
                 </Hint>
               ) : (
-                <Hint>Ons stuur ’n 6-syfer kode om jou foon te bevestig.</Hint>
+                <Hint>{t("otpSentHint")}</Hint>
               )}
             </>
           ) : (
-            <Hint>Ontwikkelmodus: geen OTP op hierdie bediener nie.</Hint>
+            <Hint>{t("checkoutNoOtpHint")}</Hint>
           )}
         </Field>
 
         {!disablePhoneOtp && codeSent ? (
           <Field>
-            <Label htmlFor="acct-otp">6-syfer kode</Label>
+            <Label htmlFor="acct-otp">{t("otpCodeLabel")}</Label>
             <Input
               id="acct-otp"
               inputMode="numeric"
@@ -402,7 +406,7 @@ export function AccountOtpForm({ onSuccess }: Props) {
                 otpCode.replace(/\D/g, "").length !== 6
           }
         >
-          {submitting ? "Besig…" : "Gaan voort"}
+          {submitting ? t("busy") : t("dismiss")}
         </PrimaryBtn>
       </Form>
     </Card>

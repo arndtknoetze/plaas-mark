@@ -9,11 +9,7 @@ function normalizePhone(input: unknown): string {
   return input.trim().replace(/\s+/g, " ");
 }
 
-const FORBIDDEN_LOCATION_BODY_KEYS = [
-  "locationId",
-  "locationSlug",
-  "location",
-] as const;
+const FORBIDDEN_LOCATION_BODY_KEYS = ["location"] as const;
 
 export async function GET(request: Request) {
   try {
@@ -55,6 +51,7 @@ export async function GET(request: Request) {
       member: { id: member.id, name: member.name, phone: member.phone },
       stores: member.stores.map((s) => ({
         id: s.id,
+        locationId: s.locationId,
         name: s.name,
         slug: s.slug,
         isActive: s.isActive,
@@ -78,7 +75,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  let body: { phone?: unknown; name?: unknown };
+  let body: { phone?: unknown; name?: unknown; locationId?: unknown };
   try {
     body = (await request.json()) as { phone?: unknown; name?: unknown };
   } catch {
@@ -92,7 +89,7 @@ export async function POST(request: Request) {
         return NextResponse.json(
           {
             error:
-              "Location is set automatically from the site you are on; do not send location fields.",
+              "Do not send a location object; send only locationId if needed.",
           },
           { status: 400 },
         );
@@ -102,6 +99,8 @@ export async function POST(request: Request) {
 
   const phone = normalizePhone(body.phone);
   const name = typeof body.name === "string" ? body.name.trim() : "";
+  const requestedLocationId =
+    typeof body.locationId === "string" ? body.locationId.trim() : "";
   if (!phone || !name) {
     return NextResponse.json(
       { error: "phone and name are required" },
@@ -115,7 +114,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Member not found." }, { status: 404 });
     }
 
-    const location = await getLocationFromHeaders();
+    const location = requestedLocationId
+      ? await prisma.location.findUnique({ where: { id: requestedLocationId } })
+      : await getLocationFromHeaders();
+    if (!location) {
+      return NextResponse.json({ error: "Unknown location." }, { status: 400 });
+    }
 
     await logApiLocationDebug("POST /api/stores/my", {
       resolvedLocationId: location.id,

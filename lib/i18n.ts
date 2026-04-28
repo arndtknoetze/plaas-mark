@@ -14,10 +14,23 @@ export const translations = {
     newOrder: "Nuwe bestelling",
     orderReady: "Bestelling gereed",
     selectLocation: "Kies jou dorp",
+    betaBadge: "Beta / toets",
+    betaTitle: "Hierdie is ’n nuwe produk (toetsfase)",
+    betaBody:
+      "PlaasMark is nog in beta. Dinge kan verander en daar mag foute wees. As jy wil, los jou e-pos en ons laat weet jou wanneer die webwerf amptelik live is.",
+    notifyEmailLabel: "E-pos adres",
+    notifyEmailPlaceholder: "jy@voorbeeld.com",
+    notifyCta: "Laat weet my",
+    notifyPrivacy:
+      "Ons gebruik jou e-pos net om jou te laat weet wanneer PlaasMark live is.",
+    notifySuccess: "Dankie! Ons sal jou laat weet wanneer ons live gaan.",
+    dismiss: "Gaan voort",
+    about: "Oor",
 
     menu: "Menu",
     cart: "Mandjie",
     itemsWord: "items",
+    register: "Registreer",
     signOut: "Teken uit",
 
     backToShop: "← Terug na winkel",
@@ -92,6 +105,8 @@ export const translations = {
     welcomeTitle: "Welkom",
     welcomeDescription:
       "PlaasMark — plaasvars produkte van plaaslike verkopers.",
+    selectLocationLead: "Kies ’n dorp om te begin inkopies doen.",
+    startShopping: "Begin inkopies",
 
     // My Orders page
     ordersFilterPlaceholder: "Filter… (status, nommer, produk, winkel)",
@@ -229,6 +244,82 @@ export const translations = {
     loginNewUserHintAccount: "na rekening",
     loginNewUserHintShop: "na winkel",
     or: "of",
+
+    // Register
+    registerTitle: "Registreer",
+    registerSubtitleNoOtp:
+      "Ontwikkelmodus (geen OTP): kies jou rol en voltooi die vorm.",
+    registerSubtitleOtp:
+      "Kies wat jy wil doen. Dit vat minder as ’n minuut op jou foon.",
+    roleBuyerTitle: "Ek koop",
+    roleBuyerHint: "Stoor jou besonderhede vir vinniger afreken.",
+    roleSellerTitle: "Ek verkoop",
+    roleSellerHint: "Skep jou plaas/handelsmerk en begin lys.",
+    brandNameLabel: "Handelsnaam",
+    brandNamePlaceholder: "Bv. Plaas Botha",
+    logoOptionalLabel: "Logo (opsioneel)",
+    chooseFile: "Kies lêer",
+    removeFile: "Verwyder",
+    logoHint:
+      "Ons stoor dit vir nou as ’n eenvoudige prent (maks 2MB). Jy kan dit later verander.",
+    verifyPhoneHelp:
+      "Jy kry ’n 6-syfer kode. Ons gebruik dit om jou nommer te bevestig.",
+    otpDisabledHint: "Geen OTP met DISABLE_PHONE_OTP op die bediener nie.",
+    createAccount: "Skep rekening",
+    createSellerProfile: "Skep verkoperprofiel",
+    registrationFailed: "Registrasie het misluk.",
+    registrationDoneTitle: "Welkom by PlaasMark",
+    registrationDoneSubtitle:
+      "Jou registrasie is klaar. Jy is reg om te begin.",
+    registeredBadge: "Geregistreer!",
+    sellerOnboardingHint:
+      "Ons sal jou help om jou produkte op te laai. (Verkoper-dashboard kom binnekort.)",
+    buyerOnboardingHint: "Blaai deur produkte en voeg items by jou mandjie.",
+    goToShop: "Gaan na winkel",
+    startShoppingShort: "Begin inkopies",
+    logoTooLarge: "Logo is te groot. Hou dit onder 2MB.",
+    errCouldNotLoadLogo: "Kon nie logo laai nie.",
+    errEnterName: "Vul jou naam in.",
+    errEnterBrandName: "Vul jou handelsnaam in.",
+
+    // Shop page
+    areaLabel: "Gebied: {area}",
+    searchLabel: "Soek",
+    searchPlaceholder: "Soek produkte of verkoper…",
+    storeFilterLabel: "Winkel",
+    allStores: "Alle winkels",
+    viewStorePage: "Bekyk winkelblad:",
+    noActiveStoresOrProducts:
+      "Nog geen aktiewe winkels of produkte in hierdie gebied nie.",
+    noProductsAvailable: "Geen produkte beskikbaar nie.",
+    noProductsMatchFilters: "Geen produkte pas by jou filters nie.",
+
+    // Cart page
+    yourCart: "Jou mandjie",
+    cartEmpty: "Jou mandjie is leeg.",
+    remove: "Verwyder",
+    goToCheckout: "Gaan na betaal",
+
+    // Begin selling
+    beginSellingTitle: "Begin verkoop",
+    signInFirstToCreateStore: "Meld eers aan om jou winkel te skep.",
+    chooseStoreNameSubtitle: "Kies ’n naam vir jou winkel in hierdie gebied.",
+    errEnterStoreName: "Vul jou winkelnaam in.",
+    errCouldNotCreateStore: "Kon nie winkel skep nie.",
+    storeNameOnlyLabel: "Winkelnaam",
+    storeNameOnlyPlaceholder: "Bv. Botha Boerdery",
+    createStore: "Skep winkel",
+    backToAccount: "← Rekening",
+    backToShopShort: "← Gaan na winkel",
+
+    // Store page (/shop/[shop])
+    invalidStoreLink: "Ongeldige winkel skakel.",
+    storePublicInfo: "Alles wat ons publiek kan wys oor hierdie winkel.",
+    address: "Adres",
+    hours: "Ure",
+    storeProductsOnly: "Net produkte van hierdie winkel.",
+    loadingStoreProducts: "Laai produkte…",
+    noProductsForStore: "Geen produkte vir hierdie winkel nie.",
   },
   en: {
     shop: "Shop",
@@ -243,10 +334,23 @@ export const translations = {
     newOrder: "New order",
     orderReady: "Order ready",
     selectLocation: "Select your town",
+    betaBadge: "Beta / testing",
+    betaTitle: "This is a new product (beta)",
+    betaBody:
+      "PlaasMark is still in beta. Things may change and there may be bugs. If you’d like, leave your email and we’ll notify you when the site is officially live.",
+    notifyEmailLabel: "Email address",
+    notifyEmailPlaceholder: "you@example.com",
+    notifyCta: "Notify me",
+    notifyPrivacy:
+      "We’ll only use your email to notify you when PlaasMark is live.",
+    notifySuccess: "Thanks! We’ll email you when we go live.",
+    dismiss: "Continue",
+    about: "About",
 
     menu: "Menu",
     cart: "Cart",
     itemsWord: "items",
+    register: "Register",
     signOut: "Sign out",
 
     backToShop: "← Back to shop",
@@ -321,6 +425,8 @@ export const translations = {
     // Home / location selector
     welcomeTitle: "Welcome",
     welcomeDescription: "PlaasMark — farm-fresh products from local sellers.",
+    selectLocationLead: "Choose a town to start shopping.",
+    startShopping: "Start shopping",
 
     // My Orders page
     ordersFilterPlaceholder: "Filter… (status, number, product, store)",
@@ -459,5 +565,80 @@ export const translations = {
     loginNewUserHintAccount: "to account",
     loginNewUserHintShop: "to shop",
     or: "or",
+
+    // Register
+    registerTitle: "Register",
+    registerSubtitleNoOtp:
+      "Dev mode (no OTP): choose your role and complete the form.",
+    registerSubtitleOtp:
+      "Choose what you want to do. It takes less than a minute on your phone.",
+    roleBuyerTitle: "I’m buying",
+    roleBuyerHint: "Save your details for faster checkout.",
+    roleSellerTitle: "I’m selling",
+    roleSellerHint: "Create your farm/brand and start listing.",
+    brandNameLabel: "Brand name",
+    brandNamePlaceholder: "e.g. Botha Farm",
+    logoOptionalLabel: "Logo (optional)",
+    chooseFile: "Choose file",
+    removeFile: "Remove",
+    logoHint:
+      "For now we store it as a simple image (max 2MB). You can change it later.",
+    verifyPhoneHelp:
+      "You’ll receive a 6-digit code. We use it to confirm your number.",
+    otpDisabledHint: "No OTP while DISABLE_PHONE_OTP is set on the server.",
+    createAccount: "Create account",
+    createSellerProfile: "Create seller profile",
+    registrationFailed: "Registration failed.",
+    registrationDoneTitle: "Welcome to PlaasMark",
+    registrationDoneSubtitle:
+      "Your registration is complete. You’re ready to get started.",
+    registeredBadge: "Registered!",
+    sellerOnboardingHint:
+      "We’ll help you upload your products. (Seller dashboard coming soon.)",
+    buyerOnboardingHint: "Browse products and add items to your cart.",
+    goToShop: "Go to shop",
+    startShoppingShort: "Start shopping",
+    logoTooLarge: "Logo is too large. Keep it under 2MB.",
+    errCouldNotLoadLogo: "Could not load logo.",
+    errEnterName: "Enter your name.",
+    errEnterBrandName: "Enter your brand name.",
+
+    // Shop page
+    areaLabel: "Area: {area}",
+    searchLabel: "Search",
+    searchPlaceholder: "Search products or seller…",
+    storeFilterLabel: "Store",
+    allStores: "All stores",
+    viewStorePage: "View store page:",
+    noActiveStoresOrProducts: "No active stores or products in this area yet.",
+    noProductsAvailable: "No products available.",
+    noProductsMatchFilters: "No products match your filters.",
+
+    // Cart page
+    yourCart: "Your cart",
+    cartEmpty: "Your cart is empty.",
+    remove: "Remove",
+    goToCheckout: "Go to checkout",
+
+    // Begin selling
+    beginSellingTitle: "Start selling",
+    signInFirstToCreateStore: "Sign in first to create your store.",
+    chooseStoreNameSubtitle: "Choose a name for your store in this area.",
+    errEnterStoreName: "Enter your store name.",
+    errCouldNotCreateStore: "Could not create store.",
+    storeNameOnlyLabel: "Store name",
+    storeNameOnlyPlaceholder: "e.g. Botha Farm",
+    createStore: "Create store",
+    backToAccount: "← Account",
+    backToShopShort: "← Go to shop",
+
+    // Store page (/shop/[shop])
+    invalidStoreLink: "Invalid store link.",
+    storePublicInfo: "Everything we can publicly show about this store.",
+    address: "Address",
+    hours: "Hours",
+    storeProductsOnly: "Only products from this store.",
+    loadingStoreProducts: "Loading products…",
+    noProductsForStore: "No products for this store.",
   },
 } as const;

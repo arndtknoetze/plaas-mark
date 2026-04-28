@@ -433,8 +433,7 @@ export function LoginForm() {
 
           <Hint>
             {t("loginNewUserHintPrefix")}{" "}
-            <Link href="/profile">{t("loginNewUserHintAccount")}</Link>{" "}
-            {t("or") ?? "of"}{" "}
+            <Link href="/register">{t("register")}</Link> {t("or") ?? "of"}{" "}
             <Link href="/shop">{t("loginNewUserHintShop")}</Link>.
           </Hint>
         </Form>

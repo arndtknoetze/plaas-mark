@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import { saveStoredCustomer } from "@/lib/customer-storage";
 import { fileToCroppedDataUrl } from "@/lib/image-crop";
+import { useLanguage } from "@/lib/useLanguage";
 import { saveStoredSession } from "@/lib/session-storage";
 
 type Role = "customer" | "seller";
@@ -332,6 +333,7 @@ function normalizePhone(v: string) {
 }
 
 export function RegisterClient() {
+  const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialRole: Role = useMemo(() => {
@@ -404,11 +406,11 @@ export function RegisterClient() {
       return;
     }
     if (!file.type.startsWith("image/")) {
-      setError("Kies asseblief ’n prent (PNG/JPG/WebP).");
+      setError(t("errChooseImage"));
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      setError("Logo is te groot. Hou dit onder 2MB.");
+      setError(t("logoTooLarge"));
       return;
     }
     try {
@@ -420,14 +422,14 @@ export function RegisterClient() {
       });
       setLogoUrl(cropped);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Kon nie logo laai nie.");
+      setError(err instanceof Error ? err.message : t("errCouldNotLoadLogo"));
     }
   };
 
   const sendOtp = async () => {
     setError(null);
     if (!phoneNorm) {
-      setError("Vul eers jou foonnommer in.");
+      setError(t("errFillPhoneFirst"));
       return;
     }
     setSendingOtp(true);
@@ -445,13 +447,13 @@ export function RegisterClient() {
           "error" in data &&
           typeof (data as { error: unknown }).error === "string"
             ? (data as { error: string }).error
-            : "Kon nie kode stuur nie.";
+            : t("errCouldNotSendCode");
         throw new Error(msg);
       }
       resetVerification();
       setCodeSent(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Onbekende fout.");
+      setError(err instanceof Error ? err.message : t("errUnknown"));
     } finally {
       setSendingOtp(false);
     }
@@ -461,7 +463,7 @@ export function RegisterClient() {
     setError(null);
     const digits = otpCode.replace(/\D/g, "");
     if (digits.length !== 6) {
-      setError("Voer die 6-syfer kode in.");
+      setError(t("errEnterSixDigitCode"));
       return;
     }
     setVerifyingOtp(true);
@@ -479,7 +481,7 @@ export function RegisterClient() {
           "error" in data &&
           typeof (data as { error: unknown }).error === "string"
             ? (data as { error: string }).error
-            : "Verifikasie het misluk.";
+            : t("errVerificationFailed");
         throw new Error(msg);
       }
       if (
@@ -489,13 +491,13 @@ export function RegisterClient() {
         typeof (data as { verificationToken: unknown }).verificationToken !==
           "string"
       ) {
-        throw new Error("Ongeldige antwoord van bediener.");
+        throw new Error(t("errInvalidServerResponse"));
       }
       const token = (data as { verificationToken: string }).verificationToken;
       setVerificationToken(token);
       setVerifiedForPhone(phoneNorm);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Onbekende fout.");
+      setError(err instanceof Error ? err.message : t("errUnknown"));
     } finally {
       setVerifyingOtp(false);
     }
@@ -505,15 +507,15 @@ export function RegisterClient() {
     e.preventDefault();
     setError(null);
     if (!disablePhoneOtp && (!phoneVerified || !verificationToken)) {
-      setError("Bevestig eers jou foonnommer met die kode.");
+      setError(t("errVerifyPhoneBeforeCheckout"));
       return;
     }
     if (!name.trim()) {
-      setError("Vul jou naam in.");
+      setError(t("errEnterName"));
       return;
     }
     if (role === "seller" && !brandName.trim()) {
-      setError("Vul jou handelsnaam in.");
+      setError(t("errEnterBrandName"));
       return;
     }
 
@@ -537,7 +539,7 @@ export function RegisterClient() {
             "error" in data &&
             typeof (data as { error: unknown }).error === "string"
               ? (data as { error: string }).error
-              : "Registrasie het misluk.";
+              : t("registrationFailed");
           throw new Error(msg);
         }
         saveStoredCustomer(name.trim(), phoneNorm);
@@ -566,7 +568,7 @@ export function RegisterClient() {
           "error" in data &&
           typeof (data as { error: unknown }).error === "string"
             ? (data as { error: string }).error
-            : "Registrasie het misluk.";
+            : t("registrationFailed");
         throw new Error(msg);
       }
       saveStoredSession({ name: name.trim(), phone: phoneNorm });
@@ -582,7 +584,7 @@ export function RegisterClient() {
       }
       setDone({ role });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Onbekende fout.");
+      setError(err instanceof Error ? err.message : t("errUnknown"));
     } finally {
       setSubmitting(false);
     }
@@ -591,17 +593,17 @@ export function RegisterClient() {
   if (done) {
     return (
       <>
-        <Title>Welkom by PlaasMark</Title>
-        <Subtitle>Jou registrasie is klaar. Jy is reg om te begin.</Subtitle>
+        <Title>{t("registrationDoneTitle")}</Title>
+        <Subtitle>{t("registrationDoneSubtitle")}</Subtitle>
         <Success>
-          <SuccessTitle>Geregistreer!</SuccessTitle>
+          <SuccessTitle>{t("registeredBadge")}</SuccessTitle>
           <SuccessText>
             {done.role === "seller"
-              ? "Ons sal jou help om jou produkte op te laai. (Verkoper-dashboard kom binnekort.)"
-              : "Blaai deur produkte en voeg items by jou mandjie."}
+              ? t("sellerOnboardingHint")
+              : t("buyerOnboardingHint")}
           </SuccessText>
           <SuccessLink href="/shop">
-            {done.role === "seller" ? "Gaan na winkel" : "Begin inkopies"}
+            {done.role === "seller" ? t("goToShop") : t("startShoppingShort")}
           </SuccessLink>
         </Success>
       </>
@@ -610,11 +612,11 @@ export function RegisterClient() {
 
   return (
     <>
-      <Title>Registreer</Title>
+      <Title>{t("registerTitle")}</Title>
       <Subtitle>
         {disablePhoneOtp
-          ? "Ontwikkelmodus (geen OTP): kies jou rol en voltooi die vorm."
-          : "Kies wat jy wil doen. Dit vat minder as ’n minuut op jou foon."}
+          ? t("registerSubtitleNoOtp")
+          : t("registerSubtitleOtp")}
       </Subtitle>
 
       <RoleGrid>
@@ -623,16 +625,16 @@ export function RegisterClient() {
           $active={role === "customer"}
           onClick={() => setRole("customer")}
         >
-          <RoleTitle>Ek koop</RoleTitle>
-          <RoleHint>Stoor jou besonderhede vir vinniger afreken.</RoleHint>
+          <RoleTitle>{t("roleBuyerTitle")}</RoleTitle>
+          <RoleHint>{t("roleBuyerHint")}</RoleHint>
         </RoleButton>
         <RoleButton
           type="button"
           $active={role === "seller"}
           onClick={() => setRole("seller")}
         >
-          <RoleTitle>Ek verkoop</RoleTitle>
-          <RoleHint>Skep jou plaas/handelsmerk en begin lys.</RoleHint>
+          <RoleTitle>{t("roleSellerTitle")}</RoleTitle>
+          <RoleHint>{t("roleSellerHint")}</RoleHint>
         </RoleButton>
       </RoleGrid>
 
@@ -641,19 +643,19 @@ export function RegisterClient() {
           {error ? <ErrorMsg role="alert">{error}</ErrorMsg> : null}
 
           <Field>
-            <Label htmlFor="reg-name">Naam</Label>
+            <Label htmlFor="reg-name">{t("labelName")}</Label>
             <Input
               id="reg-name"
               autoComplete="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Jou volle naam"
+              placeholder={t("placeholderFullName")}
               required
             />
           </Field>
 
           <Field>
-            <Label htmlFor="reg-phone">Foon</Label>
+            <Label htmlFor="reg-phone">{t("labelPhone")}</Label>
             <Input
               id="reg-phone"
               type="tel"
@@ -663,7 +665,7 @@ export function RegisterClient() {
                 setPhone(e.target.value);
                 resetVerification();
               }}
-              placeholder="Bv. 082 123 4567"
+              placeholder={t("placeholderPhone")}
               required
             />
             {!disablePhoneOtp ? (
@@ -673,21 +675,20 @@ export function RegisterClient() {
                   onClick={() => void sendOtp()}
                   disabled={sendingOtp || !phoneNorm}
                 >
-                  {sendingOtp ? "Stuur kode…" : "Stuur verifikasiekode"}
+                  {sendingOtp
+                    ? t("sendingVerificationCode")
+                    : t("sendVerificationCode")}
                 </SecondaryBtn>
-                <Hint>
-                  Jy kry ’n 6-syfer kode. Ons gebruik dit om jou nommer te
-                  bevestig.
-                </Hint>
+                <Hint>{t("verifyPhoneHelp")}</Hint>
               </>
             ) : (
-              <Hint>Geen OTP met DISABLE_PHONE_OTP op die bediener nie.</Hint>
+              <Hint>{t("otpDisabledHint")}</Hint>
             )}
           </Field>
 
           {!disablePhoneOtp && codeSent ? (
             <Field>
-              <Label htmlFor="reg-otp">6-syfer kode</Label>
+              <Label htmlFor="reg-otp">{t("otpCodeLabel")}</Label>
               <Input
                 id="reg-otp"
                 inputMode="numeric"
@@ -706,7 +707,7 @@ export function RegisterClient() {
                   verifyingOtp || otpCode.replace(/\D/g, "").length !== 6
                 }
               >
-                {verifyingOtp ? "Bevestig…" : "Bevestig foon"}
+                {verifyingOtp ? t("verifyingPhone") : t("confirmPhone")}
               </SecondaryBtn>
             </Field>
           ) : null}
@@ -714,12 +715,12 @@ export function RegisterClient() {
           {role === "seller" ? (
             <>
               <Field>
-                <Label htmlFor="reg-brandName">Handelsnaam</Label>
+                <Label htmlFor="reg-brandName">{t("brandNameLabel")}</Label>
                 <Input
                   id="reg-brandName"
                   value={brandName}
                   onChange={(e) => setBrandName(e.target.value)}
-                  placeholder="Bv. Plaas Botha"
+                  placeholder={t("brandNamePlaceholder")}
                   required
                 />
               </Field>
@@ -741,13 +742,11 @@ export function RegisterClient() {
                     inputMode="text"
                   />
                 </ColorRow>
-                <Hint>
-                  Hierdie kleur word later gebruik vir jou winkel en etikette.
-                </Hint>
+                <Hint>{t("brandColorHint")}</Hint>
               </Field>
 
               <Field>
-                <Label htmlFor="reg-logoFile">Logo (opsioneel)</Label>
+                <Label htmlFor="reg-logoFile">{t("logoOptionalLabel")}</Label>
                 <FileInput
                   id="reg-logoFile"
                   ref={logoInputRef}
@@ -763,7 +762,7 @@ export function RegisterClient() {
                     type="button"
                     onClick={() => logoInputRef.current?.click()}
                   >
-                    Kies lêer
+                    {t("chooseFile")}
                   </TinyBtn>
                   <TinyBtn
                     type="button"
@@ -773,7 +772,7 @@ export function RegisterClient() {
                     }}
                     disabled={!logoUrl}
                   >
-                    Verwyder
+                    {t("removeFile")}
                   </TinyBtn>
                 </FileActions>
                 {logoUrl ? (
@@ -781,20 +780,17 @@ export function RegisterClient() {
                     <PreviewImg src={logoUrl} alt="Logo preview" />
                   </LogoPreview>
                 ) : null}
-                <Hint>
-                  Ons stoor dit vir nou as ’n eenvoudige prent (maks 2MB). Jy
-                  kan dit later verander.
-                </Hint>
+                <Hint>{t("logoHint")}</Hint>
               </Field>
             </>
           ) : null}
 
           <PrimaryBtn type="submit" disabled={submitting || !phoneVerified}>
             {submitting
-              ? "Besig…"
+              ? t("busy")
               : role === "seller"
-                ? "Skep verkoperprofiel"
-                : "Skep rekening"}
+                ? t("createSellerProfile")
+                : t("createAccount")}
           </PrimaryBtn>
         </Form>
       </Card>

@@ -37,6 +37,7 @@ export async function GET(
       store: {
         id: store.id,
         memberId: store.memberId,
+        locationId: store.locationId,
         name: store.name,
         slug: store.slug,
         isActive: store.isActive,
@@ -103,6 +104,8 @@ export async function PATCH(
   const isActive = typeof body.isActive === "boolean" ? body.isActive : null;
   const brandColor =
     typeof body.brandColor === "string" ? body.brandColor.trim() : null;
+  const locationId =
+    typeof body.locationId === "string" ? body.locationId.trim() : null;
 
   const logoUrl = typeof body.logoUrl === "string" ? body.logoUrl.trim() : null;
   const addressText =
@@ -119,10 +122,26 @@ export async function PATCH(
     typeof body.hoursText === "string" ? body.hoursText.trim() : null;
 
   try {
+    if (locationId !== null && locationId) {
+      const exists = await prisma.location.findUnique({
+        where: { id: locationId },
+        select: { id: true },
+      });
+      if (!exists) {
+        return NextResponse.json(
+          { error: "Unknown location." },
+          { status: 400 },
+        );
+      }
+    }
+
     const updated = await prisma.store.update({
       where: { id },
       data: {
         ...(name !== null ? { name, slug: slugify(name) || store.slug } : {}),
+        ...(locationId !== null
+          ? { locationId: locationId || store.locationId }
+          : {}),
         ...(isActive !== null ? { isActive } : {}),
         ...(brandColor !== null && /^#[0-9a-fA-F]{6}$/.test(brandColor)
           ? { brandColor: brandColor.toUpperCase() }

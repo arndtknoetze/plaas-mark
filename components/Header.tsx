@@ -226,6 +226,8 @@ const ShopLink = styled(Link)`
   }
 `;
 
+const AboutLink = styled(ShopLink)``;
+
 const OrdersLink = styled(Link)`
   display: inline-flex;
   align-items: center;
@@ -484,6 +486,7 @@ export function Header({ location }: { location: PublicLocation | null }) {
         </BrandCluster>
         <Actions>
           <ShopLink href="/shop">{t("shop")}</ShopLink>
+          <AboutLink href="/about">{t("about")}</AboutLink>
           {session ? (
             <OrdersLink href="/my-orders">{t("myOrders")}</OrdersLink>
           ) : null}
@@ -547,6 +550,9 @@ export function Header({ location }: { location: PublicLocation | null }) {
                 <MenuItem role="menuitem" href="/shop">
                   {t("shop")}
                 </MenuItem>
+                <MenuItem role="menuitem" href="/about">
+                  {t("about")}
+                </MenuItem>
                 {session ? (
                   <MenuItem role="menuitem" href="/my-orders">
                     {t("myOrders")}
@@ -557,9 +563,14 @@ export function Header({ location }: { location: PublicLocation | null }) {
                     {t("activity")}
                   </MenuItem>
                 ) : (
-                  <MenuItem role="menuitem" href="/login">
-                    {t("signIn")}
-                  </MenuItem>
+                  <>
+                    <MenuItem role="menuitem" href="/login">
+                      {t("signIn")}
+                    </MenuItem>
+                    <MenuItem role="menuitem" href="/register">
+                      {t("register")}
+                    </MenuItem>
+                  </>
                 )}
                 {session ? (
                   <MenuItem role="menuitem" href="/profile">

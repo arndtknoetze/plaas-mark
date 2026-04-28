@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import styled from "styled-components";
 import { AccountOtpForm } from "@/components/AccountOtpForm";
+import { useLanguage } from "@/lib/useLanguage";
 import { loadStoredSession, type StoredSession } from "@/lib/session-storage";
 
 const Title = styled.h1`
@@ -81,6 +82,24 @@ const Input = styled.input`
   }
 `;
 
+const Select = styled.select`
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid #d8d8d4;
+  border-radius: 12px;
+  font-size: 1rem;
+  color: ${({ theme }) => theme.colors.textDark};
+  background: #ffffff;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: none;
+    border-color: ${({ theme }) => theme.colors.primary};
+    box-shadow: 0 0 0 2px rgba(46, 94, 62, 0.15);
+  }
+`;
+
 const ErrorMsg = styled.p`
   margin: 0;
   padding: 12px 14px;
@@ -128,9 +147,14 @@ const Card = styled.div`
 
 export function BeginVerkoopClient() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [hydrated, setHydrated] = useState(false);
   const [session, setSession] = useState<StoredSession | null>(null);
   const [storeName, setStoreName] = useState("");
+  const [locations, setLocations] = useState<
+    { id: string; name: string; slug: string }[]
+  >([]);
+  const [locationId, setLocationId] = useState<string>("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -141,21 +165,70 @@ export function BeginVerkoopClient() {
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [locRes, currentRes] = await Promise.all([
+          fetch("/api/locations", { cache: "no-store" }),
+          fetch("/api/location", { cache: "no-store" }),
+        ]);
+
+        const locBody: unknown = await locRes.json().catch(() => null);
+        const currentBody: unknown = await currentRes.json().catch(() => null);
+
+        const list =
+          locBody &&
+          typeof locBody === "object" &&
+          "locations" in locBody &&
+          Array.isArray((locBody as { locations?: unknown }).locations)
+            ? ((locBody as { locations: unknown[] }).locations as unknown[])
+            : [];
+
+        const parsed = list.filter(
+          (x): x is { id: string; name: string; slug: string } =>
+            Boolean(x) &&
+            typeof x === "object" &&
+            typeof (x as { id?: unknown }).id === "string" &&
+            typeof (x as { name?: unknown }).name === "string" &&
+            typeof (x as { slug?: unknown }).slug === "string",
+        );
+
+        const currentId =
+          currentBody &&
+          typeof currentBody === "object" &&
+          typeof (currentBody as { id?: unknown }).id === "string"
+            ? (currentBody as { id: string }).id
+            : "";
+
+        if (!cancelled) {
+          setLocations(parsed);
+          setLocationId((prev) => prev || currentId || parsed[0]?.id || "");
+        }
+      } catch {
+        // If locations fail to load, keep default behavior (current subdomain location).
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   if (!hydrated || !session) {
     return (
       <>
-        <Title>Begin verkoop</Title>
-        <Subtitle>Meld eers aan om jou winkel te skep.</Subtitle>
+        <Title>{t("beginSellingTitle")}</Title>
+        <Subtitle>{t("signInFirstToCreateStore")}</Subtitle>
         <AccountOtpForm onSuccess={() => setSession(loadStoredSession())} />
-        <BackLink href="/shop">← Gaan na winkel</BackLink>
+        <BackLink href="/shop">{t("backToShopShort")}</BackLink>
       </>
     );
   }
 
   return (
     <>
-      <Title>Begin verkoop</Title>
-      <Subtitle>Kies ’n naam vir jou winkel in hierdie gebied.</Subtitle>
+      <Title>{t("beginSellingTitle")}</Title>
+      <Subtitle>{t("chooseStoreNameSubtitle")}</Subtitle>
 
       <Card>
         <Form
@@ -163,7 +236,7 @@ export function BeginVerkoopClient() {
             e.preventDefault();
             const name = storeName.trim();
             if (!name) {
-              setError("Vul jou winkelnaam in.");
+              setError(t("errEnterStoreName"));
               return;
             }
             setError(null);
@@ -175,6 +248,7 @@ export function BeginVerkoopClient() {
                 body: JSON.stringify({
                   phone: session.phone,
                   name,
+                  ...(locationId ? { locationId } : {}),
                 }),
               });
               const data: unknown = await res.json().catch(() => null);
@@ -185,7 +259,7 @@ export function BeginVerkoopClient() {
                   "error" in data &&
                   typeof (data as { error: unknown }).error === "string"
                     ? (data as { error: string }).error
-                    : "Kon nie winkel skep nie.";
+                    : t("errCouldNotCreateStore");
                 throw new Error(msg);
               }
               const storeId =
@@ -195,20 +269,36 @@ export function BeginVerkoopClient() {
                 typeof (data as { storeId: unknown }).storeId === "string"
                   ? (data as { storeId: string }).storeId
                   : null;
-              if (!storeId) throw new Error("Ongeldige antwoord.");
+              if (!storeId) throw new Error(t("errInvalidServerResponse"));
               router.push(
                 `/profile?store=${encodeURIComponent(storeId)}&firstProduct=1`,
               );
             } catch (err) {
-              setError(err instanceof Error ? err.message : "Onbekende fout.");
+              setError(err instanceof Error ? err.message : t("errUnknown"));
             } finally {
               setCreating(false);
             }
           }}
         >
           {error ? <ErrorMsg role="alert">{error}</ErrorMsg> : null}
+          {locations.length > 0 ? (
+            <Field>
+              <Label htmlFor="new-store-location">Area / Location</Label>
+              <Select
+                id="new-store-location"
+                value={locationId}
+                onChange={(e) => setLocationId(e.target.value)}
+              >
+                {locations.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name} ({l.slug})
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          ) : null}
           <Field>
-            <Label htmlFor="new-store-only">Winkelnaam</Label>
+            <Label htmlFor="new-store-only">{t("storeNameOnlyLabel")}</Label>
             <Input
               id="new-store-only"
               value={storeName}
@@ -216,17 +306,17 @@ export function BeginVerkoopClient() {
                 setStoreName(e.target.value);
                 setError(null);
               }}
-              placeholder="Bv. Botha Boerdery"
+              placeholder={t("storeNameOnlyPlaceholder")}
               required
             />
           </Field>
           <PrimaryBtn type="submit" disabled={creating}>
-            {creating ? "Skep…" : "Skep winkel"}
+            {creating ? t("creating") : t("createStore")}
           </PrimaryBtn>
         </Form>
       </Card>
 
-      <BackLink href="/profile">← Rekening</BackLink>
+      <BackLink href="/profile">{t("backToAccount")}</BackLink>
     </>
   );
 }
