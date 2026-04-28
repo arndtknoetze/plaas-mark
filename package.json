@@ -15,6 +15,7 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
+    "db:seed:malmesbury": "node scripts/seed-malmesbury-extra.mjs",
     "db:snapshot": "node scripts/export-seed-snapshot.mjs",
     "db:setup": "prisma migrate deploy && prisma db seed",
     "postinstall": "prisma generate",

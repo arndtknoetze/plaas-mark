@@ -2,9 +2,11 @@
 
 import {
   createContext,
+  useEffect,
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { CartItem } from "@/types/cart";
@@ -12,13 +14,15 @@ import type { CartItem } from "@/types/cart";
 export const CART_LOCATION_MISMATCH_AF =
   "Jy kan net produkte van een dorp op 'n slag bestel";
 
+const CART_STORAGE_KEY = "plaasmark_cart_v1";
+
 type AddPayload = {
   productId: string;
   name: string;
   price: number;
   quantity?: number;
-  vendorId?: string;
-  vendorName?: string;
+  storeId?: string;
+  storeName?: string;
   /** Must match `product.store.locationId`. */
   locationId: string;
 };
@@ -31,18 +35,107 @@ type CartContextValue = {
   cartLocationId: string | null;
   addToCart: (payload: AddPayload) => AddToCartResult;
   removeFromCart: (productId: string) => void;
+  updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
 
+function safeParseCartItems(value: unknown): CartItem[] {
+  const rawItems =
+    value && typeof value === "object" && "items" in value
+      ? (value as { items?: unknown }).items
+      : value;
+
+  if (!Array.isArray(rawItems)) return [];
+
+  const out: CartItem[] = [];
+  for (const row of rawItems) {
+    if (!row || typeof row !== "object") continue;
+    const o = row as Record<string, unknown>;
+
+    // Backwards compat: previously stored as vendorId/vendorName.
+    const storeId =
+      typeof o.storeId === "string"
+        ? o.storeId
+        : typeof o.vendorId === "string"
+          ? o.vendorId
+          : "";
+    const storeName =
+      typeof o.storeName === "string"
+        ? o.storeName
+        : typeof o.vendorName === "string"
+          ? o.vendorName
+          : "";
+
+    if (
+      typeof o.productId !== "string" ||
+      typeof o.name !== "string" ||
+      typeof o.price !== "number" ||
+      !Number.isFinite(o.price) ||
+      typeof o.quantity !== "number" ||
+      !Number.isInteger(o.quantity) ||
+      o.quantity < 1 ||
+      typeof o.locationId !== "string" ||
+      o.locationId.trim().length === 0
+    ) {
+      continue;
+    }
+
+    out.push({
+      productId: o.productId,
+      name: o.name,
+      price: o.price,
+      quantity: o.quantity,
+      storeId,
+      storeName,
+      locationId: o.locationId,
+    });
+  }
+
+  // Enforce single-location cart if storage got corrupted.
+  const loc = out[0]?.locationId ?? null;
+  return loc ? out.filter((x) => x.locationId === loc) : [];
+}
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const hydratedRef = useRef(false);
+
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- hydrate localStorage-backed cart after mount */
+    if (typeof window === "undefined") return;
+    try {
+      const raw = localStorage.getItem(CART_STORAGE_KEY);
+      if (!raw) {
+        hydratedRef.current = true;
+        return;
+      }
+      const parsed: unknown = JSON.parse(raw);
+      setItems(safeParseCartItems(parsed));
+    } catch {
+      // Ignore malformed storage.
+    } finally {
+      hydratedRef.current = true;
+    }
+    /* eslint-enable react-hooks/set-state-in-effect -- hydrate localStorage-backed cart after mount */
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!hydratedRef.current) return;
+    try {
+      const payload = { items };
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(payload));
+    } catch {
+      // Ignore quota / private mode errors.
+    }
+  }, [items]);
 
   const addToCart = useCallback((payload: AddPayload): AddToCartResult => {
     const qty = payload.quantity ?? 1;
-    const vendorId = payload.vendorId ?? "";
-    const vendorName = payload.vendorName ?? "";
+    const storeId = payload.storeId ?? "";
+    const storeName = payload.storeName ?? "";
     const locationId = payload.locationId?.trim() ?? "";
 
     if (!locationId) {
@@ -66,8 +159,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             name: payload.name,
             price: payload.price,
             quantity: qty,
-            vendorId,
-            vendorName,
+            storeId,
+            storeName,
             locationId,
           },
         ];
@@ -78,6 +171,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       next[index] = {
         ...line,
         quantity: line.quantity + qty,
+        storeId,
+        storeName,
         locationId,
       };
       return next;
@@ -94,6 +189,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems((prev) => prev.filter((x) => x.productId !== productId));
   }, []);
 
+  const updateQuantity = useCallback((productId: string, quantity: number) => {
+    const q = Number.isFinite(quantity) ? Math.floor(quantity) : 0;
+    if (q <= 0) {
+      setItems((prev) => prev.filter((x) => x.productId !== productId));
+      return;
+    }
+    setItems((prev) =>
+      prev.map((x) => (x.productId === productId ? { ...x, quantity: q } : x)),
+    );
+  }, []);
+
   const clearCart = useCallback(() => {
     setItems([]);
   }, []);
@@ -106,9 +212,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       cartLocationId,
       addToCart,
       removeFromCart,
+      updateQuantity,
       clearCart,
     }),
-    [items, cartLocationId, addToCart, removeFromCart, clearCart],
+    [
+      items,
+      cartLocationId,
+      addToCart,
+      removeFromCart,
+      updateQuantity,
+      clearCart,
+    ],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

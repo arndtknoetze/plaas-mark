@@ -101,6 +101,18 @@ class ForbiddenOrderError extends Error {
 function isCartItem(value: unknown): value is CartItem {
   if (!value || typeof value !== "object") return false;
   const o = value as Record<string, unknown>;
+  const storeId =
+    typeof o.storeId === "string"
+      ? o.storeId
+      : typeof o.vendorId === "string"
+        ? o.vendorId
+        : null;
+  const storeName =
+    typeof o.storeName === "string"
+      ? o.storeName
+      : typeof o.vendorName === "string"
+        ? o.vendorName
+        : null;
   return (
     typeof o.productId === "string" &&
     typeof o.name === "string" &&
@@ -109,8 +121,8 @@ function isCartItem(value: unknown): value is CartItem {
     typeof o.quantity === "number" &&
     Number.isInteger(o.quantity) &&
     o.quantity >= 1 &&
-    typeof o.vendorId === "string" &&
-    typeof o.vendorName === "string" &&
+    typeof storeId === "string" &&
+    typeof storeName === "string" &&
     typeof o.locationId === "string" &&
     o.locationId.length > 0
   );
@@ -152,7 +164,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "Each item must include productId, name, price, quantity, vendorId, vendorName, and locationId.",
+          "Each item must include productId, name, price, quantity, storeId/storeName (or vendorId/vendorName), and locationId.",
       },
       { status: 400 },
     );
@@ -232,7 +244,7 @@ export async function POST(request: Request) {
   const productById = new Map(catalogueProducts.map((p) => [p.id, p]));
   for (const item of items) {
     const row = productById.get(item.productId);
-    if (!row || row.vendorId !== item.vendorId) {
+    if (!row || row.vendorId !== item.storeId) {
       return NextResponse.json(
         {
           error:
@@ -272,7 +284,7 @@ export async function POST(request: Request) {
       select: { id: true },
     });
     const ownedStoreIds = new Set(ownedStores.map((s) => s.id));
-    const hasOwnLine = items.some((i) => ownedStoreIds.has(i.vendorId));
+    const hasOwnLine = items.some((i) => ownedStoreIds.has(i.storeId));
     if (hasOwnLine) {
       return NextResponse.json(
         { error: "Jy kan nie jou eie produkte bestel nie." },
@@ -332,8 +344,8 @@ export async function POST(request: Request) {
               name: item.name,
               price: item.price,
               quantity: item.quantity,
-              vendorId: item.vendorId,
-              vendorName: item.vendorName,
+              vendorId: item.storeId,
+              vendorName: item.storeName,
             })),
           },
         },
@@ -348,7 +360,7 @@ export async function POST(request: Request) {
         },
       });
 
-      const vendorIds = [...new Set(items.map((item) => item.vendorId))];
+      const vendorIds = [...new Set(items.map((item) => item.storeId))];
       const storesForNotify = await tx.store.findMany({
         where: {
           id: { in: vendorIds },

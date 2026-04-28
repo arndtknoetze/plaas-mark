@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import styled from "styled-components";
+import { useToast } from "@/components/ToastProvider";
 import { useCart } from "@/lib/cart-context";
+import { groupCartItemsByStore } from "@/lib/cart-utils";
 import { loadStoredCustomer, saveStoredCustomer } from "@/lib/customer-storage";
 import { useLanguage } from "@/lib/useLanguage";
 
@@ -339,7 +341,9 @@ function normalizePhone(value: string) {
 
 export default function CheckoutPage() {
   const { t } = useLanguage();
+  const toast = useToast();
   const { items, clearCart } = useCart();
+  const { groups } = groupCartItemsByStore(items);
   const [name, setName] = useState(() => {
     if (typeof window === "undefined") return "";
     return loadStoredCustomer()?.name ?? "";
@@ -351,7 +355,7 @@ export default function CheckoutPage() {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [orderId, setOrderId] = useState<string | null>(null);
+  const [orderIds, setOrderIds] = useState<string[] | null>(null);
   const [otpCode, setOtpCode] = useState("");
   const [codeSent, setCodeSent] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
@@ -438,8 +442,11 @@ export default function CheckoutPage() {
       setVerifiedForPhone(null);
       setOtpCode("");
       setCodeSent(true);
+      toast.success(t("otpSentHint") ?? "Code sent.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("errUnknown"));
+      const msg = err instanceof Error ? err.message : t("errUnknown");
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSendingOtp(false);
     }
@@ -482,8 +489,11 @@ export default function CheckoutPage() {
       const token = (data as { verificationToken: string }).verificationToken;
       setVerificationToken(token);
       setVerifiedForPhone(phoneNorm);
+      toast.success(t("verifiedPhoneLine") ?? "Phone verified.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("errUnknown"));
+      const msg = err instanceof Error ? err.message : t("errUnknown");
+      setError(msg);
+      toast.error(msg);
     } finally {
       setVerifyingOtp(false);
     }
@@ -498,54 +508,70 @@ export default function CheckoutPage() {
     }
     setSubmitting(true);
     try {
-      const payload: Record<string, unknown> = {
+      const basePayload: Record<string, unknown> = {
         customer: {
           name: name.trim(),
           phone: phoneNorm,
           ...(notes.trim() ? { notes: notes.trim() } : {}),
         },
-        items,
       };
-      if (!disablePhoneOtp && verificationToken) {
-        payload.verificationToken = verificationToken;
+      if (!disablePhoneOtp && verificationToken)
+        basePayload.verificationToken = verificationToken;
+
+      const orders = groups.map((g) => ({
+        storeId: g.storeId,
+        items: g.items,
+      }));
+
+      const ids: string[] = [];
+      for (const o of orders) {
+        const payload = {
+          ...basePayload,
+          // `storeId` is included for client clarity; the API derives store from line items.
+          storeId: o.storeId,
+          items: o.items,
+        };
+        const res = await fetch("/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data: unknown = await res.json().catch(() => null);
+        if (!res.ok) {
+          const msg =
+            data &&
+            typeof data === "object" &&
+            "error" in data &&
+            typeof (data as { error: unknown }).error === "string"
+              ? (data as { error: string }).error
+              : t("errCouldNotPlaceOrder");
+          throw new Error(msg);
+        }
+        if (
+          !data ||
+          typeof data !== "object" ||
+          !("orderId" in data) ||
+          typeof (data as { orderId: unknown }).orderId !== "string"
+        ) {
+          throw new Error(t("errInvalidServerResponse"));
+        }
+        ids.push((data as { orderId: string }).orderId);
       }
 
-      const res = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data: unknown = await res.json().catch(() => null);
-      if (!res.ok) {
-        const msg =
-          data &&
-          typeof data === "object" &&
-          "error" in data &&
-          typeof (data as { error: unknown }).error === "string"
-            ? (data as { error: string }).error
-            : t("errCouldNotPlaceOrder");
-        throw new Error(msg);
-      }
-      if (
-        !data ||
-        typeof data !== "object" ||
-        !("orderId" in data) ||
-        typeof (data as { orderId: unknown }).orderId !== "string"
-      ) {
-        throw new Error(t("errInvalidServerResponse"));
-      }
-      const id = (data as { orderId: string }).orderId;
       saveStoredCustomer(name.trim(), phoneNorm);
-      setOrderId(id);
+      setOrderIds(ids);
       clearCart();
+      toast.success(t("orderReceivedTitle") ?? "Order placed.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("errUnknown"));
+      const msg = err instanceof Error ? err.message : t("errUnknown");
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (orderId) {
+  if (orderIds && orderIds.length > 0) {
     return (
       <>
         <BackLink href="/shop">{t("backToShop")}</BackLink>
@@ -553,7 +579,7 @@ export default function CheckoutPage() {
           <SuccessTitle>{t("orderReceivedTitle")}</SuccessTitle>
           <SuccessText>{t("orderReceivedBody")}</SuccessText>
           <SuccessMeta>
-            {t("orderNumberLabel")} {orderId}
+            {t("orderNumberLabel")} {orderIds.join(", ")}
           </SuccessMeta>
           <ShopLink href="/shop">{t("continueShopping")}</ShopLink>
         </SuccessBox>
@@ -589,8 +615,8 @@ export default function CheckoutPage() {
             <Line key={line.productId}>
               <LineMain>
                 <LineName>{line.name}</LineName>
-                {line.vendorName ? (
-                  <LineVendor>{line.vendorName}</LineVendor>
+                {line.storeName ? (
+                  <LineVendor>{line.storeName}</LineVendor>
                 ) : null}
                 <LineQty>
                   {formatPrice(line.price)} × {line.quantity}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import styled from "styled-components";
+import { useToast } from "@/components/ToastProvider";
 import { useLanguage } from "@/lib/useLanguage";
 import { saveStoredSession } from "@/lib/session-storage";
 
@@ -131,7 +132,8 @@ type Props = {
 };
 
 export function AccountOtpForm({ onSuccess }: Props) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const toast = useToast();
   const [disablePhoneOtp, setDisablePhoneOtp] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -194,8 +196,11 @@ export function AccountOtpForm({ onSuccess }: Props) {
       }
       setCodeSent(true);
       setOtpCode("");
+      toast.success(t("otpSentHint") ?? "Code sent.");
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("errUnknown"));
+      const msg = e instanceof Error ? e.message : t("errUnknown");
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSending(false);
     }
@@ -231,9 +236,12 @@ export function AccountOtpForm({ onSuccess }: Props) {
         throw new Error(msg);
       }
       saveStoredSession({ name: n, phone: phoneNorm });
+      toast.success(language === "af" ? "Aangeteken." : "Signed in.");
       onSuccess?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("errUnknown"));
+      const msg = e instanceof Error ? e.message : t("errUnknown");
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }
@@ -305,9 +313,12 @@ export function AccountOtpForm({ onSuccess }: Props) {
         throw new Error(msg);
       }
       saveStoredSession({ name: n, phone: phoneNorm });
+      toast.success(language === "af" ? "Aangeteken." : "Signed in.");
       onSuccess?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("errUnknown"));
+      const msg = e instanceof Error ? e.message : t("errUnknown");
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }

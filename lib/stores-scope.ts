@@ -16,6 +16,7 @@ export async function findPublicStoresForLocation(locationId: string) {
       id: true,
       name: true,
       slug: true,
+      logoUrl: true,
     },
   });
 }

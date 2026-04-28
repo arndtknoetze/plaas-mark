@@ -7,6 +7,7 @@ import { wherePublicStoresInLocation } from "@/lib/stores-scope";
 export async function findProductsForLocationCatalogue(locationId: string) {
   return prisma.product.findMany({
     where: {
+      isActive: true,
       store: wherePublicStoresInLocation(locationId),
     },
     include: {

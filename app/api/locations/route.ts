@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const locations = await prisma.location.findMany({
       orderBy: { name: "asc" },
-      select: { id: true, name: true, slug: true },
+      select: { id: true, name: true, slug: true, bannerImageUrl: true },
     });
     return NextResponse.json({ locations });
   } catch {

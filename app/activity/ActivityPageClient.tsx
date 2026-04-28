@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { Container } from "@/components/Container";
+import { useToast } from "@/components/ToastProvider";
 import { loadStoredSession } from "@/lib/session-storage";
 import { useLanguage } from "@/lib/useLanguage";
 import type { ActivityItem } from "@/types/activity";
@@ -265,11 +266,13 @@ function groupActivity(
 
 export function ActivityPageClient() {
   const { t, language } = useLanguage();
+  const toast = useToast();
   const [sessionPhone, setSessionPhone] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
+  const [manualReload, setManualReload] = useState(false);
 
   useEffect(() => {
     const s = loadStoredSession();
@@ -293,18 +296,25 @@ export function ActivityPageClient() {
         error?: string;
       };
       if (!res.ok) {
-        setError(data.error ?? t("errLoadActivity"));
+        const msg = data.error ?? t("errLoadActivity");
+        setError(msg);
+        if (manualReload) toast.error(msg);
         setActivity([]);
         return;
       }
       setActivity(Array.isArray(data.activity) ? data.activity : []);
+      if (manualReload)
+        toast.success(language === "af" ? "Verfris." : "Refreshed.");
     } catch {
-      setError(t("errLoadActivity"));
+      const msg = t("errLoadActivity");
+      setError(msg);
+      if (manualReload) toast.error(msg);
       setActivity([]);
     } finally {
       setLoading(false);
+      if (manualReload) setManualReload(false);
     }
-  }, [sessionPhone, t]);
+  }, [language, manualReload, sessionPhone, t, toast]);
 
   useEffect(() => {
     if (!sessionPhone) return;
@@ -402,7 +412,14 @@ export function ActivityPageClient() {
           </>
         ) : null}
 
-        <ReloadBtn type="button" onClick={() => void load()} disabled={loading}>
+        <ReloadBtn
+          type="button"
+          onClick={() => {
+            setManualReload(true);
+            void load();
+          }}
+          disabled={loading}
+        >
           {loading ? t("loading") : t("refresh")}
         </ReloadBtn>
       </PageWrap>

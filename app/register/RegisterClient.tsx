@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
+import { useToast } from "@/components/ToastProvider";
 import { saveStoredCustomer } from "@/lib/customer-storage";
 import { fileToCroppedDataUrl } from "@/lib/image-crop";
 import { useLanguage } from "@/lib/useLanguage";
@@ -333,8 +334,9 @@ function normalizePhone(v: string) {
 }
 
 export function RegisterClient() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const router = useRouter();
+  const toast = useToast();
   const searchParams = useSearchParams();
   const initialRole: Role = useMemo(() => {
     const raw = searchParams.get("role")?.toLowerCase();
@@ -407,10 +409,12 @@ export function RegisterClient() {
     }
     if (!file.type.startsWith("image/")) {
       setError(t("errChooseImage"));
+      toast.error(t("errChooseImage"));
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
       setError(t("logoTooLarge"));
+      toast.error(t("logoTooLarge"));
       return;
     }
     try {
@@ -421,8 +425,11 @@ export function RegisterClient() {
         quality: 0.9,
       });
       setLogoUrl(cropped);
+      toast.success(language === "af" ? "Logo gereed." : "Logo ready.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("errCouldNotLoadLogo"));
+      const msg = err instanceof Error ? err.message : t("errCouldNotLoadLogo");
+      setError(msg);
+      toast.error(msg);
     }
   };
 
@@ -452,8 +459,11 @@ export function RegisterClient() {
       }
       resetVerification();
       setCodeSent(true);
+      toast.success(t("otpSentHint") ?? "Code sent.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("errUnknown"));
+      const msg = err instanceof Error ? err.message : t("errUnknown");
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSendingOtp(false);
     }
@@ -496,8 +506,11 @@ export function RegisterClient() {
       const token = (data as { verificationToken: string }).verificationToken;
       setVerificationToken(token);
       setVerifiedForPhone(phoneNorm);
+      toast.success(t("verifiedPhoneLine") ?? "Phone verified.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("errUnknown"));
+      const msg = err instanceof Error ? err.message : t("errUnknown");
+      setError(msg);
+      toast.error(msg);
     } finally {
       setVerifyingOtp(false);
     }
@@ -545,6 +558,7 @@ export function RegisterClient() {
         saveStoredCustomer(name.trim(), phoneNorm);
         saveStoredSession({ name: name.trim(), phone: phoneNorm });
         setDone({ role });
+        toast.success(t("registrationDoneTitle") ?? "Registered.");
         return;
       }
 
@@ -579,12 +593,16 @@ export function RegisterClient() {
         typeof (data as { storeId?: unknown }).storeId === "string"
       ) {
         const storeId = (data as { storeId: string }).storeId;
+        toast.success(t("registrationDoneTitle") ?? "Registered.");
         router.push(`/profile?store=${encodeURIComponent(storeId)}`);
         return;
       }
       setDone({ role });
+      toast.success(t("registrationDoneTitle") ?? "Registered.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("errUnknown"));
+      const msg = err instanceof Error ? err.message : t("errUnknown");
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }

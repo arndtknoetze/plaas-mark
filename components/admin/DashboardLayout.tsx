@@ -406,6 +406,7 @@ function IconMenu() {
 const NAV: NavItem[] = [
   { href: "/admin", label: "Overview", icon: <IconGrid /> },
   { href: "/admin/orders", label: "Orders", icon: <IconReceipt /> },
+  { href: "/admin/locations", label: "Locations", icon: <IconStore /> },
   { href: "/admin/stores", label: "Stores", icon: <IconStore /> },
   { href: "/admin/products", label: "Products", icon: <IconBox /> },
   { href: "/admin/sponsors", label: "Sponsors", icon: <IconUsers /> },

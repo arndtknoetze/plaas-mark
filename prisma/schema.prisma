@@ -42,6 +42,7 @@ model Location {
   id        String   @id @default(cuid())
   name      String
   slug      String   @unique
+  bannerImageUrl String? @db.LongText
   createdAt DateTime @default(now())
 
   stores Store[]
@@ -83,15 +84,23 @@ model Store {
 }
 
 model Product {
-  id         String   @id @default(cuid())
-  title      String
-  price      Decimal  @db.Decimal(10, 2)
-  unit       String?
-  vendorId   String
-  vendorName String   @default("")
-  image      String?  @db.LongText
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.LongText
+  /// JSON string[] (MySQL has no native array type).
+  tags        Json?
+  /// JSON string[] (preferred); `image` remains for backward compatibility.
+  images      Json?
+  price       Decimal  @db.Decimal(10, 2)
+  unit        String?
+  vendorId    String
+  vendorName  String   @default("")
+  /// Backward-compatible single-image field (legacy).
+  image       String?  @db.LongText
+  isFeatured  Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   store Store @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 }

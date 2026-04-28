@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { Container } from "@/components/Container";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { useToast } from "@/components/ToastProvider";
 import { useCart } from "@/lib/cart-context";
 import { useLanguage } from "@/lib/useLanguage";
 import {
@@ -314,6 +315,7 @@ function MenuIcon() {
 export function Header({ location }: { location: PublicLocation | null }) {
   const { t } = useLanguage();
   const router = useRouter();
+  const toast = useToast();
   const { items } = useCart();
   const count = items.reduce((sum, line) => sum + line.quantity, 0);
   const [session, setSession] = useState<StoredSession | null>(() =>
@@ -552,15 +554,16 @@ export function Header({ location }: { location: PublicLocation | null }) {
                       type="button"
                       role="menuitem"
                       onClick={() => {
-                        fetch("/api/logout", { method: "POST" }).catch(
-                          () => {},
-                        );
+                        fetch("/api/logout", { method: "POST" }).catch(() => {
+                          toast.error(t("errUnknown"));
+                        });
                         clearStoredSession();
                         setSession(null);
                         setStoresLoaded(false);
                         setHasNoStoreInArea(false);
                         setUnreadNotifications(0);
                         setMenuOpen(false);
+                        toast.success("Signed out.");
                         router.replace("/");
                       }}
                     >

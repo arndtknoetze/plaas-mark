@@ -3,8 +3,8 @@ export type CartItem = {
   name: string;
   price: number;
   quantity: number;
-  vendorId: string;
-  vendorName: string;
+  storeId: string;
+  storeName: string;
   /** Same for every line in the mandjie (single-location cart). */
   locationId: string;
 };

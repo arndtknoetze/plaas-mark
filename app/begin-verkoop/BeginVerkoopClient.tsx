@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import styled from "styled-components";
 import { AccountOtpForm } from "@/components/AccountOtpForm";
+import { useToast } from "@/components/ToastProvider";
 import { useLanguage } from "@/lib/useLanguage";
 import { loadStoredSession, type StoredSession } from "@/lib/session-storage";
 
@@ -147,7 +148,8 @@ const Card = styled.div`
 
 export function BeginVerkoopClient() {
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const toast = useToast();
   const [hydrated, setHydrated] = useState(false);
   const [session, setSession] = useState<StoredSession | null>(null);
   const [storeName, setStoreName] = useState("");
@@ -270,11 +272,16 @@ export function BeginVerkoopClient() {
                   ? (data as { storeId: string }).storeId
                   : null;
               if (!storeId) throw new Error(t("errInvalidServerResponse"));
+              toast.success(
+                language === "af" ? "Winkel geskep." : "Store created.",
+              );
               router.push(
                 `/profile?store=${encodeURIComponent(storeId)}&firstProduct=1`,
               );
             } catch (err) {
-              setError(err instanceof Error ? err.message : t("errUnknown"));
+              const msg = err instanceof Error ? err.message : t("errUnknown");
+              setError(msg);
+              toast.error(msg);
             } finally {
               setCreating(false);
             }

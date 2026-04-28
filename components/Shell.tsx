@@ -7,6 +7,7 @@ import { BetaWelcomeModal } from "@/components/BetaWelcomeModal";
 import { PageWrapper } from "@/components/PageWrapper";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import { ToastProvider } from "@/components/ToastProvider";
 import { VisitTracker } from "@/components/VisitTracker";
 import type { PublicLocation } from "@/lib/location";
 
@@ -36,21 +37,27 @@ export function Shell({
   variant?: "site" | "admin";
 }) {
   if (variant === "admin") {
-    return <Root>{children}</Root>;
+    return (
+      <ToastProvider>
+        <Root>{children}</Root>
+      </ToastProvider>
+    );
   }
 
   return (
-    <Root>
-      <Header location={location} />
-      <BetaWelcomeModal />
-      <ServiceWorkerRegister />
-      <VisitTracker />
-      <Main>
-        <PageWrapper>
-          <Container>{children}</Container>
-        </PageWrapper>
-      </Main>
-      <PwaInstallPrompt />
-    </Root>
+    <ToastProvider>
+      <Root>
+        <Header location={location} />
+        <BetaWelcomeModal />
+        <ServiceWorkerRegister />
+        <VisitTracker />
+        <Main>
+          <PageWrapper>
+            <Container>{children}</Container>
+          </PageWrapper>
+        </Main>
+        <PwaInstallPrompt />
+      </Root>
+    </ToastProvider>
   );
 }

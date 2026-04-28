@@ -4,6 +4,12 @@ import { getLocationFromHeaders } from "@/lib/location";
 import { findProductsForLocationCatalogue } from "@/lib/products-scope";
 import { prisma } from "@/lib/db";
 
+function toStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const out = value.filter((x): x is string => typeof x === "string");
+  return out.length ? out : undefined;
+}
+
 export async function GET() {
   try {
     const location = await getLocationFromHeaders();
@@ -18,16 +24,26 @@ export async function GET() {
       productCount: rows.length,
     });
 
-    const products = rows.map((p) => ({
-      id: p.id,
-      title: p.title,
-      price: Number(p.price),
-      unit: p.unit ?? undefined,
-      vendorId: p.vendorId,
-      vendorName: p.vendorName,
-      locationId: p.store.locationId,
-      image: p.image ?? undefined,
-    }));
+    const products = rows.map((p) => {
+      const images =
+        toStringArray(p.images) ?? (p.image ? [p.image] : undefined);
+      const tags = toStringArray(p.tags) ?? undefined;
+      return {
+        id: p.id,
+        title: p.title,
+        description: p.description ?? undefined,
+        tags,
+        images,
+        price: Number(p.price),
+        unit: p.unit ?? undefined,
+        vendorId: p.vendorId,
+        vendorName: p.vendorName,
+        locationId: p.store.locationId,
+        image: p.image ?? images?.[0] ?? undefined,
+        isFeatured: p.isFeatured,
+        isActive: p.isActive,
+      };
+    });
 
     return NextResponse.json(products);
   } catch {
@@ -42,6 +58,9 @@ type CreateBody = {
   phone?: unknown;
   storeId?: unknown;
   title?: unknown;
+  description?: unknown;
+  tags?: unknown;
+  images?: unknown;
   price?: unknown;
   unit?: unknown;
   image?: unknown;
@@ -58,6 +77,14 @@ function normalizeOptionalString(input: unknown): string | null {
   return v ? v : null;
 }
 
+function normalizeStringArray(input: unknown): string[] | null {
+  if (!Array.isArray(input)) return null;
+  const out = input
+    .map((x) => (typeof x === "string" ? x.trim() : ""))
+    .filter(Boolean);
+  return out.length ? out : null;
+}
+
 export async function POST(request: Request) {
   let body: CreateBody;
   try {
@@ -69,6 +96,7 @@ export async function POST(request: Request) {
   const phone = normalizePhone(body.phone);
   const storeId = typeof body.storeId === "string" ? body.storeId.trim() : "";
   const title = typeof body.title === "string" ? body.title.trim() : "";
+  const description = normalizeOptionalString(body.description) ?? undefined;
   const price =
     typeof body.price === "number"
       ? body.price
@@ -77,6 +105,8 @@ export async function POST(request: Request) {
         : NaN;
   const unit = normalizeOptionalString(body.unit) ?? undefined;
   const image = normalizeOptionalString(body.image) ?? undefined;
+  const images = normalizeStringArray(body.images) ?? (image ? [image] : null);
+  const tags = normalizeStringArray(body.tags) ?? null;
 
   if (!phone || !storeId || !title || !Number.isFinite(price) || price <= 0) {
     return NextResponse.json(
@@ -121,6 +151,9 @@ export async function POST(request: Request) {
       const product = await tx.product.create({
         data: {
           title,
+          description,
+          ...(images ? { images } : {}),
+          ...(tags ? { tags } : {}),
           price,
           unit,
           image,

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import styled from "styled-components";
+import { useToast } from "@/components/ToastProvider";
 import { loadStoredSession } from "@/lib/session-storage";
 
 const Title = styled.h1`
@@ -130,6 +131,7 @@ function normalizePhone(v: string) {
 export function AdminLoginForm() {
   const router = useRouter();
   const search = useSearchParams();
+  const toast = useToast();
   const nextPath = search.get("next") || "/admin";
 
   const [disablePhoneOtp, setDisablePhoneOtp] = useState(false);
@@ -207,9 +209,12 @@ export function AdminLoginForm() {
             : "Login failed.";
         throw new Error(msg);
       }
+      toast.success("Signed in.");
       router.push(nextPath);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Login failed.");
+      const msg = e instanceof Error ? e.message : "Login failed.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoggingIn(false);
     }
@@ -246,8 +251,11 @@ export function AdminLoginForm() {
       }
       setCodeSent(true);
       setOtpCode("");
+      toast.success("Code sent.");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not send code.");
+      const msg = e instanceof Error ? e.message : "Could not send code.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSending(false);
     }
@@ -310,9 +318,12 @@ export function AdminLoginForm() {
             : "Login failed.";
         throw new Error(msg);
       }
+      toast.success("Signed in.");
       router.push(nextPath);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Login failed.");
+      const msg = e instanceof Error ? e.message : "Login failed.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setVerifying(false);
       setLoggingIn(false);

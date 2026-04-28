@@ -1,0 +1,2 @@
+ALTER TABLE `Location` ADD COLUMN `bannerImageUrl` LONGTEXT NULL;
+

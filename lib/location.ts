@@ -45,13 +45,21 @@ export async function getLocationFromRequest(
   return loadLocationBySlug(slug);
 }
 
-export type PublicLocation = Pick<Location, "id" | "name" | "slug">;
+export type PublicLocation = Pick<
+  Location,
+  "id" | "name" | "slug" | "bannerImageUrl"
+>;
 
 /** For server components / layout when the DB is unavailable or not seeded. */
 export async function getPublicLocationOrNull(): Promise<PublicLocation | null> {
   try {
     const l = await getLocationFromHeaders();
-    return { id: l.id, name: l.name, slug: l.slug };
+    return {
+      id: l.id,
+      name: l.name,
+      slug: l.slug,
+      bannerImageUrl: l.bannerImageUrl,
+    };
   } catch {
     return null;
   }

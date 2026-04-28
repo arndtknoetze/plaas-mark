@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import styled from "styled-components";
+import { useToast } from "@/components/ToastProvider";
 import { useLanguage } from "@/lib/useLanguage";
 import { saveStoredSession } from "@/lib/session-storage";
 
@@ -148,8 +149,9 @@ function normalizePhone(v: string) {
 }
 
 export function LoginForm() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const router = useRouter();
+  const toast = useToast();
   const [disablePhoneOtp, setDisablePhoneOtp] = useState(false);
   const [phone, setPhone] = useState("");
   const [otpCode, setOtpCode] = useState("");
@@ -218,9 +220,12 @@ export function LoginForm() {
       if (!session) throw new Error(t("errInvalidServerResponse"));
 
       saveStoredSession(session);
+      toast.success(language === "af" ? "Aangeteken." : "Signed in.");
       router.push("/profile");
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("errUnknown"));
+      const msg = e instanceof Error ? e.message : t("errUnknown");
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoggingIn(false);
     }
@@ -257,8 +262,11 @@ export function LoginForm() {
       }
       setCodeSent(true);
       setOtpCode("");
+      toast.success(t("otpSentHint") ?? "Code sent.");
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("errUnknown"));
+      const msg = e instanceof Error ? e.message : t("errUnknown");
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSending(false);
     }
@@ -334,9 +342,12 @@ export function LoginForm() {
       if (!session) throw new Error(t("errInvalidServerResponse"));
 
       saveStoredSession(session);
+      toast.success(language === "af" ? "Aangeteken." : "Signed in.");
       router.push("/profile");
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("errUnknown"));
+      const msg = e instanceof Error ? e.message : t("errUnknown");
+      setError(msg);
+      toast.error(msg);
     } finally {
       setVerifying(false);
       setLoggingIn(false);

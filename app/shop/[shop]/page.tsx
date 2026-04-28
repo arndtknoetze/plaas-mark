@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { ProductCard } from "@/components/ProductCard";
 import { useLanguage } from "@/lib/useLanguage";
+import { loadStoredSession } from "@/lib/session-storage";
 import type { Product } from "@/types/product";
 
 const BackLink = styled(Link)`
@@ -263,6 +264,7 @@ export default function ShopByVendorPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [storeName, setStoreName] = useState<string | null>(null);
+  const [ownedStoreIds, setOwnedStoreIds] = useState<Set<string> | null>(null);
   const [storeMeta, setStoreMeta] = useState<{
     addressText: string | null;
     email: string | null;
@@ -274,6 +276,44 @@ export default function ShopByVendorPage() {
     logoUrl: string | null;
     slug: string | null;
   } | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (ownedStoreIds !== null) return;
+    const session = loadStoredSession();
+    if (!session) {
+      /* eslint-disable react-hooks/set-state-in-effect -- initialize from localStorage after mount */
+      setOwnedStoreIds(new Set());
+      /* eslint-enable react-hooks/set-state-in-effect */
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/stores/my?phone=${encodeURIComponent(session.phone)}`)
+      .then((r) => r.json())
+      .then((data: unknown) => {
+        if (cancelled) return;
+        const list =
+          data && typeof data === "object" && "stores" in data
+            ? (data as { stores: unknown }).stores
+            : [];
+        const ids = Array.isArray(list)
+          ? list
+              .map((s) =>
+                s && typeof s === "object" && "id" in s
+                  ? (s as { id?: unknown }).id
+                  : null,
+              )
+              .filter((x): x is string => typeof x === "string")
+          : [];
+        setOwnedStoreIds(new Set(ids));
+      })
+      .catch(() => {
+        if (!cancelled) setOwnedStoreIds(new Set());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ownedStoreIds]);
 
   useEffect(() => {
     let cancelled = false;
@@ -334,8 +374,9 @@ export default function ShopByVendorPage() {
 
   const filtered = useMemo(() => {
     if (!storeId) return [];
+    if (ownedStoreIds?.has(storeId)) return [];
     return products.filter((p) => p.vendorId === storeId);
-  }, [products, storeId]);
+  }, [ownedStoreIds, products, storeId]);
 
   const displayName = storeName ?? t("shop");
   const publicUrl =
