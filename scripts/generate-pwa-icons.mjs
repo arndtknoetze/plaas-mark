@@ -25,7 +25,9 @@ async function main() {
 
   for (const s of [192, 512]) {
     const buf = Buffer.from(iconSvg(s, 0.28));
-    await sharp(buf).png().toFile(path.join(iconsDir, `icon-${s}.png`));
+    await sharp(buf)
+      .png()
+      .toFile(path.join(iconsDir, `icon-${s}.png`));
   }
 
   const maskBuf = Buffer.from(iconSvg(512, 0.22));
