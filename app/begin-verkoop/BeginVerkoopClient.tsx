@@ -278,9 +278,7 @@ export function BeginVerkoopClient() {
               toast.success(
                 language === "af" ? "Winkel geskep." : "Store created.",
               );
-              router.push(
-                `/profile?store=${encodeURIComponent(storeId)}&firstProduct=1`,
-              );
+              router.push(`/account/stores/${encodeURIComponent(storeId)}`);
             } catch (err) {
               const msg = err instanceof Error ? err.message : t("errUnknown");
               setError(msg);
@@ -326,7 +324,7 @@ export function BeginVerkoopClient() {
         </Form>
       </Card>
 
-      <BackLink href="/profile">{t("backToAccount")}</BackLink>
+      <BackLink href="/account">Back to dashboard</BackLink>
     </>
   );
 }

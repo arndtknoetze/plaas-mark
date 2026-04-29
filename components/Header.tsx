@@ -539,7 +539,7 @@ export function Header({ location }: { location: PublicLocation | null }) {
                   <>
                     <MenuDivider />
                     <MenuGroupLabel>Account</MenuGroupLabel>
-                    <MenuItem role="menuitem" href="/profile">
+                    <MenuItem role="menuitem" href="/account">
                       {t("account")}
                     </MenuItem>
                     <MenuItem role="menuitem" href="/activity">

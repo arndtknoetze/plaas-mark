@@ -597,7 +597,7 @@ export function RegisterClient() {
       ) {
         const storeId = (data as { storeId: string }).storeId;
         toast.success(t("registrationDoneTitle") ?? "Registered.");
-        router.push(`/profile?store=${encodeURIComponent(storeId)}`);
+        router.push(`/account/stores/${encodeURIComponent(storeId)}`);
         return;
       }
       setDone({ role });

@@ -224,7 +224,7 @@ export function LoginForm() {
 
       saveStoredSession(session);
       toast.success(language === "af" ? "Aangeteken." : "Signed in.");
-      router.push("/profile");
+      router.push("/account");
     } catch (e) {
       const msg = e instanceof Error ? e.message : t("errUnknown");
       setError(msg);
@@ -346,7 +346,7 @@ export function LoginForm() {
 
       saveStoredSession(session);
       toast.success(language === "af" ? "Aangeteken." : "Signed in.");
-      router.push("/profile");
+      router.push("/account");
     } catch (e) {
       const msg = e instanceof Error ? e.message : t("errUnknown");
       setError(msg);

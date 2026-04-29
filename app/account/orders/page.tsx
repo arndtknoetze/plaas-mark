@@ -500,7 +500,7 @@ export default function AccountStoreOrdersPage() {
   if (!bootstrapped) {
     return (
       <>
-        <BackLink href="/profile">{t("backToProfile")}</BackLink>
+        <BackLink href="/account">Back to dashboard</BackLink>
         <Title>{t("myStoreOrdersTitle")}</Title>
         <Hint>{t("loading")}</Hint>
       </>
@@ -510,12 +510,12 @@ export default function AccountStoreOrdersPage() {
   if (!sessionPhone) {
     return (
       <>
-        <BackLink href="/profile">{t("backToProfile")}</BackLink>
+        <BackLink href="/account">Back to dashboard</BackLink>
         <Title>{t("myStoreOrdersTitle")}</Title>
         <Subtitle>{t("myStoreOrdersSubtitleSignedOut")}</Subtitle>
         <Hint>
           {t("signInToSeeStoreOrders")}{" "}
-          <HintLink href="/profile">{t("account")}</HintLink>
+          <HintLink href="/account">{t("account")}</HintLink>
         </Hint>
       </>
     );
@@ -523,7 +523,7 @@ export default function AccountStoreOrdersPage() {
 
   return (
     <>
-      <BackLink href="/profile">{t("backToProfile")}</BackLink>
+      <BackLink href="/account">Back to dashboard</BackLink>
       <Title>{t("myStoreOrdersTitle")}</Title>
       <Subtitle>{t("myStoreOrdersSubtitleSignedIn")}</Subtitle>
 

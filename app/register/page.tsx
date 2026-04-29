@@ -11,7 +11,7 @@ export default function RegisterPage() {
   useEffect(() => {
     // Session is stored in localStorage, so this check must be client-side.
     if (loadStoredSession()) {
-      router.replace("/profile");
+      router.replace("/account");
     }
   }, [router]);
 
