@@ -351,145 +351,166 @@ export default function AccountSingleStorePage({
 
         {store && stats ? (
           <>
-            <Card>
-              <HeaderRow>
-                <StoreBadge>
-                  {store.logoUrl ? (
-                    <Logo src={store.logoUrl} alt={`${store.name} logo`} />
-                  ) : (
-                    <FallbackLogo
-                      $color={store.brandColor || "#2E5E3E"}
-                      aria-hidden
-                    />
-                  )}
-                  <div style={{ minWidth: 0 }}>
-                    <StoreName>{store.name}</StoreName>
-                    <StoreMeta>
-                      {store.isActive ? "Active" : "Inactive"} •{" "}
-                      {storePublicUrl(store, location)}
-                    </StoreMeta>
-                  </div>
-                </StoreBadge>
-
-                <ActionsRow style={{ marginTop: 0 }}>
-                  <SecondaryLink
-                    href={`/account/stores/${encodeURIComponent(store.id)}/edit`}
-                  >
-                    Edit store
-                  </SecondaryLink>
-                  <SecondaryLink href={storePublicUrl(store, location)}>
-                    View store
-                  </SecondaryLink>
-                  <StorePrimaryLink
-                    href="#"
-                    $color={store.brandColor || "#2E5E3E"}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setStickerOpen(true);
-                    }}
-                  >
-                    Generate sticker
-                  </StorePrimaryLink>
-                </ActionsRow>
-              </HeaderRow>
-            </Card>
-
-            <Card>
-              <CardTitle>Stats</CardTitle>
-              <StatsRow>
-                <Kpi>
-                  <KpiLabel>Products</KpiLabel>
-                  <KpiValue>{stats.productsCount}</KpiValue>
-                </Kpi>
-                <Kpi>
-                  <KpiLabel>Orders</KpiLabel>
-                  <KpiValue>{stats.ordersCount}</KpiValue>
-                </Kpi>
-                <Kpi>
-                  <KpiLabel>Recent sales ({stats.recentSalesDays}d)</KpiLabel>
-                  <KpiValue>{formatCurrencyZar(stats.recentSales)}</KpiValue>
-                </Kpi>
-              </StatsRow>
-            </Card>
-
-            <Card>
-              <CardTitle>Products</CardTitle>
-              {data.productsPreview.length === 0 ? (
-                <Muted>No products yet.</Muted>
-              ) : (
-                <PreviewList>
-                  {data.productsPreview.map((p) => (
-                    <ProductRow key={p.id}>
-                      <Thumb aria-hidden={!p.image}>
-                        {p.image ? (
-                          <ThumbImg src={p.image} alt={p.title} />
-                        ) : null}
-                      </Thumb>
-                      <div style={{ minWidth: 0 }}>
-                        <ProdTitle>{p.title}</ProdTitle>
-                        <ProdMeta>
-                          {formatCurrencyZar(p.price)}
-                          {p.unit ? ` • ${p.unit}` : ""}
-                        </ProdMeta>
-                      </div>
-                      <Price>{formatCurrencyZar(p.price)}</Price>
-                    </ProductRow>
-                  ))}
-                </PreviewList>
-              )}
-
-              <ActionsRow>
-                <StorePrimaryLink
-                  href={`/account/stores/${encodeURIComponent(store.id)}/products`}
-                  $color={store.brandColor || "#2E5E3E"}
-                >
-                  Manage products
-                </StorePrimaryLink>
-              </ActionsRow>
-            </Card>
-
-            <Card>
-              <CardTitle>Recent Orders</CardTitle>
-              {data.ordersPreview.length === 0 ? (
-                <Muted>No orders yet.</Muted>
-              ) : (
-                <PreviewList>
-                  {data.ordersPreview.map((o) => (
-                    <OrderRow key={o.id}>
-                      <OrderTop>
-                        <OrderCustomer>{o.customerName}</OrderCustomer>
-                        <div style={{ fontWeight: 950, color: "#2E5E3E" }}>
-                          {formatCurrencyZar(o.total)}
+            {/*
+              TS: `data` can be null even when `store && stats` is true.
+              This block only renders once the fetch payload is present.
+            */}
+            {(() => {
+              const d = data;
+              if (!d) return null;
+              return (
+                <>
+                  <Card>
+                    <HeaderRow>
+                      <StoreBadge>
+                        {store.logoUrl ? (
+                          <Logo
+                            src={store.logoUrl}
+                            alt={`${store.name} logo`}
+                          />
+                        ) : (
+                          <FallbackLogo
+                            $color={store.brandColor || "#2E5E3E"}
+                            aria-hidden
+                          />
+                        )}
+                        <div style={{ minWidth: 0 }}>
+                          <StoreName>{store.name}</StoreName>
+                          <StoreMeta>
+                            {store.isActive ? "Active" : "Inactive"} •{" "}
+                            {storePublicUrl(store, location)}
+                          </StoreMeta>
                         </div>
-                      </OrderTop>
-                      <OrderMeta>
-                        {formatWhen(o.createdAt)} • {o.status}
-                      </OrderMeta>
-                    </OrderRow>
-                  ))}
-                </PreviewList>
-              )}
+                      </StoreBadge>
 
-              <ActionsRow>
-                <SecondaryLink href="/account/orders">
-                  View all orders
-                </SecondaryLink>
-              </ActionsRow>
-            </Card>
+                      <ActionsRow style={{ marginTop: 0 }}>
+                        <SecondaryLink
+                          href={`/account/stores/${encodeURIComponent(store.id)}/edit`}
+                        >
+                          Edit store
+                        </SecondaryLink>
+                        <SecondaryLink href={storePublicUrl(store, location)}>
+                          View store
+                        </SecondaryLink>
+                        <StorePrimaryLink
+                          href="#"
+                          $color={store.brandColor || "#2E5E3E"}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setStickerOpen(true);
+                          }}
+                        >
+                          Generate sticker
+                        </StorePrimaryLink>
+                      </ActionsRow>
+                    </HeaderRow>
+                  </Card>
 
-            <StickerGeneratorModal
-              open={stickerOpen}
-              onClose={() => setStickerOpen(false)}
-              store={{
-                name: store.name,
-                slug: store.slug,
-                brandColor: store.brandColor,
-                logoUrl: store.logoUrl,
-                description: store.description,
-                phoneNumber: store.phoneNumber,
-                locationSlug: location,
-              }}
-            />
+                  <Card>
+                    <CardTitle>Stats</CardTitle>
+                    <StatsRow>
+                      <Kpi>
+                        <KpiLabel>Products</KpiLabel>
+                        <KpiValue>{stats.productsCount}</KpiValue>
+                      </Kpi>
+                      <Kpi>
+                        <KpiLabel>Orders</KpiLabel>
+                        <KpiValue>{stats.ordersCount}</KpiValue>
+                      </Kpi>
+                      <Kpi>
+                        <KpiLabel>
+                          Recent sales ({stats.recentSalesDays}d)
+                        </KpiLabel>
+                        <KpiValue>
+                          {formatCurrencyZar(stats.recentSales)}
+                        </KpiValue>
+                      </Kpi>
+                    </StatsRow>
+                  </Card>
+
+                  <Card>
+                    <CardTitle>Products</CardTitle>
+                    {d.productsPreview.length === 0 ? (
+                      <Muted>No products yet.</Muted>
+                    ) : (
+                      <PreviewList>
+                        {d.productsPreview.map((p) => (
+                          <ProductRow key={p.id}>
+                            <Thumb aria-hidden={!p.image}>
+                              {p.image ? (
+                                <ThumbImg src={p.image} alt={p.title} />
+                              ) : null}
+                            </Thumb>
+                            <div style={{ minWidth: 0 }}>
+                              <ProdTitle>{p.title}</ProdTitle>
+                              <ProdMeta>
+                                {formatCurrencyZar(p.price)}
+                                {p.unit ? ` • ${p.unit}` : ""}
+                              </ProdMeta>
+                            </div>
+                            <Price>{formatCurrencyZar(p.price)}</Price>
+                          </ProductRow>
+                        ))}
+                      </PreviewList>
+                    )}
+
+                    <ActionsRow>
+                      <StorePrimaryLink
+                        href={`/account/stores/${encodeURIComponent(store.id)}/products`}
+                        $color={store.brandColor || "#2E5E3E"}
+                      >
+                        Manage products
+                      </StorePrimaryLink>
+                    </ActionsRow>
+                  </Card>
+
+                  <Card>
+                    <CardTitle>Recent Orders</CardTitle>
+                    {d.ordersPreview.length === 0 ? (
+                      <Muted>No orders yet.</Muted>
+                    ) : (
+                      <PreviewList>
+                        {d.ordersPreview.map((o) => (
+                          <OrderRow key={o.id}>
+                            <OrderTop>
+                              <OrderCustomer>{o.customerName}</OrderCustomer>
+                              <div
+                                style={{ fontWeight: 950, color: "#2E5E3E" }}
+                              >
+                                {formatCurrencyZar(o.total)}
+                              </div>
+                            </OrderTop>
+                            <OrderMeta>
+                              {formatWhen(o.createdAt)} • {o.status}
+                            </OrderMeta>
+                          </OrderRow>
+                        ))}
+                      </PreviewList>
+                    )}
+
+                    <ActionsRow>
+                      <SecondaryLink href="/account/orders">
+                        View all orders
+                      </SecondaryLink>
+                    </ActionsRow>
+                  </Card>
+
+                  <StickerGeneratorModal
+                    open={stickerOpen}
+                    onClose={() => setStickerOpen(false)}
+                    store={{
+                      name: store.name,
+                      slug: store.slug,
+                      brandColor: store.brandColor,
+                      logoUrl: store.logoUrl,
+                      description: store.description,
+                      phoneNumber: store.phoneNumber,
+                      locationSlug: location,
+                    }}
+                  />
+                </>
+              );
+            })()}
           </>
         ) : null}
       </DashboardPage>
