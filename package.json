@@ -28,9 +28,6 @@
     ],
     "*.{json,md,css,yml,yaml}": "prettier --write --ignore-unknown"
   },
-  "prisma": {
-    "seed": "node prisma/seed.mjs"
-  },
   "dependencies": {
     "@prisma/client": "^6.19.0",
     "lucide-react": "^1.11.0",
