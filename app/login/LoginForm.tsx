@@ -7,6 +7,7 @@ import styled from "styled-components";
 import { useToast } from "@/components/ToastProvider";
 import { useLanguage } from "@/lib/useLanguage";
 import { saveStoredSession } from "@/lib/session-storage";
+import { useResolvedLocationSlug } from "@/lib/useResolvedLocationSlug";
 
 const Title = styled.h1`
   margin: 0 0 8px;
@@ -152,6 +153,8 @@ export function LoginForm() {
   const { t, language } = useLanguage();
   const router = useRouter();
   const toast = useToast();
+  const location = useResolvedLocationSlug();
+  const shopHref = location ? `/${location}/shop` : "/";
   const [disablePhoneOtp, setDisablePhoneOtp] = useState(false);
   const [phone, setPhone] = useState("");
   const [otpCode, setOtpCode] = useState("");
@@ -445,7 +448,7 @@ export function LoginForm() {
           <Hint>
             {t("loginNewUserHintPrefix")}{" "}
             <Link href="/register">{t("register")}</Link> {t("or") ?? "of"}{" "}
-            <Link href="/shop">{t("loginNewUserHintShop")}</Link>.
+            <Link href={shopHref}>{t("loginNewUserHintShop")}</Link>.
           </Hint>
         </Form>
       </Card>

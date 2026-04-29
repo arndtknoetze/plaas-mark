@@ -9,6 +9,7 @@ import { saveStoredCustomer } from "@/lib/customer-storage";
 import { fileToCroppedDataUrl } from "@/lib/image-crop";
 import { useLanguage } from "@/lib/useLanguage";
 import { saveStoredSession } from "@/lib/session-storage";
+import { useResolvedLocationSlug } from "@/lib/useResolvedLocationSlug";
 
 type Role = "customer" | "seller";
 
@@ -337,6 +338,8 @@ export function RegisterClient() {
   const { t, language } = useLanguage();
   const router = useRouter();
   const toast = useToast();
+  const location = useResolvedLocationSlug();
+  const shopHref = location ? `/${location}/shop` : "/";
   const searchParams = useSearchParams();
   const initialRole: Role = useMemo(() => {
     const raw = searchParams.get("role")?.toLowerCase();
@@ -620,7 +623,7 @@ export function RegisterClient() {
               ? t("sellerOnboardingHint")
               : t("buyerOnboardingHint")}
           </SuccessText>
-          <SuccessLink href="/shop">
+          <SuccessLink href={shopHref}>
             {done.role === "seller" ? t("goToShop") : t("startShoppingShort")}
           </SuccessLink>
         </Success>

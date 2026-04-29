@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { logApiLocationDebug } from "@/lib/api-location-debug-log";
-import { getLocationFromHeaders } from "@/lib/location";
+import { getLocationFromUrlOrHeaders } from "@/lib/location";
 import { prisma } from "@/lib/db";
 import { isPhoneOtpDisabled } from "@/lib/phone-otp";
 import { createUserSessionToken, getUserCookieName } from "@/lib/user-session";
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   try {
     let resolvedLocationId: string | undefined;
     try {
-      resolvedLocationId = (await getLocationFromHeaders()).id;
+      resolvedLocationId = (await getLocationFromUrlOrHeaders(request)).id;
     } catch {
       resolvedLocationId = undefined;
     }

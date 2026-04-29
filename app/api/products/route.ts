@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { logApiLocationDebug } from "@/lib/api-location-debug-log";
-import { getLocationFromHeaders } from "@/lib/location";
+import { getLocationFromUrlOrHeaders } from "@/lib/location";
 import { findProductsForLocationCatalogue } from "@/lib/products-scope";
 import { prisma } from "@/lib/db";
 
@@ -10,9 +10,9 @@ function toStringArray(value: unknown): string[] | undefined {
   return out.length ? out : undefined;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const location = await getLocationFromHeaders();
+    const location = await getLocationFromUrlOrHeaders(request);
 
     const rows = await findProductsForLocationCatalogue(location.id);
 
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const location = await getLocationFromHeaders();
+    const location = await getLocationFromUrlOrHeaders(request);
 
     const result = await prisma.$transaction(async (tx) => {
       const member = await tx.member.findUnique({ where: { phone } });

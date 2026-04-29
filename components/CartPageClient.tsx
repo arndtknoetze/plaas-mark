@@ -248,14 +248,20 @@ function shortId(id: string) {
   return `${v.slice(0, 6)}…${v.slice(-4)}`;
 }
 
-export default function CartPage() {
+export default function CartPageClient({
+  locationSlug,
+}: {
+  locationSlug?: string;
+}) {
   const { items, updateQuantity } = useCart();
   const { t, language } = useLanguage();
   const { groups, total } = groupCartItemsByStore(items);
 
+  const locationPrefix = locationSlug ? `/${locationSlug}` : "";
+
   return (
     <>
-      <BackLink href="/shop">{t("backToShop")}</BackLink>
+      <BackLink href={`${locationPrefix}/shop`}>{t("backToShop")}</BackLink>
       <Title>{t("yourCart")}</Title>
       {items.length === 0 ? (
         <Empty>{t("cartEmpty")}</Empty>

@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { LandingLocationDiscovery } from "@/components/LandingLocationDiscovery";
 import { LocationSelector } from "@/components/LocationSelector";
-import { resolveLocationSlugFromHost } from "@/lib/host-subdomain";
 import { buildLocationEntryUrl } from "@/lib/location-entry-url";
 
 const LOCATIONS_PER_PAGE = 24;
@@ -19,17 +16,11 @@ export default async function HomePage({
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host");
   const sp = (await searchParams) ?? {};
   const pageRaw = Array.isArray(sp.page) ? sp.page[0] : sp.page;
   const pageNum = Number(pageRaw);
   const page =
     Number.isFinite(pageNum) && pageNum > 0 ? Math.floor(pageNum) : 1;
-
-  if (resolveLocationSlugFromHost(host) !== null) {
-    redirect("/shop");
-  }
 
   const total = await prisma.location.count();
   const totalPages = Math.max(1, Math.ceil(total / LOCATIONS_PER_PAGE));
@@ -49,7 +40,7 @@ export default async function HomePage({
   const locations = pageRows.map((row) => ({
     slug: row.slug,
     label: row.name,
-    href: buildLocationEntryUrl(row.slug, h),
+    href: buildLocationEntryUrl(row.slug),
     province: row.province,
   }));
 

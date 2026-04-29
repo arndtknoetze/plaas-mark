@@ -8,6 +8,7 @@ import { useCart } from "@/lib/cart-context";
 import { groupCartItemsByStore } from "@/lib/cart-utils";
 import { loadStoredCustomer, saveStoredCustomer } from "@/lib/customer-storage";
 import { useLanguage } from "@/lib/useLanguage";
+import { useResolvedLocationSlug } from "@/lib/useResolvedLocationSlug";
 
 const BackLink = styled(Link)`
   display: inline-block;
@@ -343,6 +344,9 @@ export default function CheckoutPage() {
   const { t } = useLanguage();
   const toast = useToast();
   const { items, clearCart } = useCart();
+  const location = useResolvedLocationSlug();
+  const shopHref = location ? `/${location}/shop` : "/";
+  const cartHref = location ? `/${location}/cart` : "/";
   const { groups } = groupCartItemsByStore(items);
   const [name, setName] = useState(() => {
     if (typeof window === "undefined") return "";
@@ -574,14 +578,14 @@ export default function CheckoutPage() {
   if (orderIds && orderIds.length > 0) {
     return (
       <>
-        <BackLink href="/shop">{t("backToShop")}</BackLink>
+        <BackLink href={shopHref}>{t("backToShop")}</BackLink>
         <SuccessBox>
           <SuccessTitle>{t("orderReceivedTitle")}</SuccessTitle>
           <SuccessText>{t("orderReceivedBody")}</SuccessText>
           <SuccessMeta>
             {t("orderNumberLabel")} {orderIds.join(", ")}
           </SuccessMeta>
-          <ShopLink href="/shop">{t("continueShopping")}</ShopLink>
+          <ShopLink href={shopHref}>{t("continueShopping")}</ShopLink>
         </SuccessBox>
       </>
     );
@@ -590,17 +594,17 @@ export default function CheckoutPage() {
   if (items.length === 0) {
     return (
       <>
-        <BackLink href="/shop">{t("backToShop")}</BackLink>
+        <BackLink href={shopHref}>{t("backToShop")}</BackLink>
         <Title>{t("checkout")}</Title>
         <EmptyText>{t("cartEmptyCheckout")}</EmptyText>
-        <ShopLink href="/shop">{t("browseProducts")}</ShopLink>
+        <ShopLink href={shopHref}>{t("browseProducts")}</ShopLink>
       </>
     );
   }
 
   return (
     <>
-      <BackLink href="/cart">{t("backToCart")}</BackLink>
+      <BackLink href={cartHref}>{t("backToCart")}</BackLink>
       <Title>{t("checkout")}</Title>
       <Subtitle>
         {disablePhoneOtp

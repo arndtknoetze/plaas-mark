@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { logApiLocationDebug } from "@/lib/api-location-debug-log";
 import { prisma } from "@/lib/db";
-import { getLocationFromHeaders } from "@/lib/location";
+import { getLocationFromUrlOrHeaders } from "@/lib/location";
 import { slugify } from "@/lib/slug";
 
 function normalizePhone(input: unknown): string {
@@ -13,7 +13,7 @@ const FORBIDDEN_LOCATION_BODY_KEYS = ["location"] as const;
 
 export async function GET(request: Request) {
   try {
-    const location = await getLocationFromHeaders();
+    const location = await getLocationFromUrlOrHeaders(request);
 
     const phone =
       new URL(request.url).searchParams
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
 
     const location = requestedLocationId
       ? await prisma.location.findUnique({ where: { id: requestedLocationId } })
-      : await getLocationFromHeaders();
+      : await getLocationFromUrlOrHeaders(request);
     if (!location) {
       return NextResponse.json({ error: "Unknown location." }, { status: 400 });
     }

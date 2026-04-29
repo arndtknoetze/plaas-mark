@@ -252,12 +252,18 @@ const Message = styled.p`
   color: ${({ theme }) => theme.colors.textLight};
 `;
 
-export default function ShopByVendorPage() {
+export default function StorePageClient() {
   const { t } = useLanguage();
-  const params = useParams<{ shop: string }>();
-  const shopParam = String(params.shop ?? "");
-  const storeId = shopParam.includes("--")
-    ? (shopParam.split("--").pop() ?? "")
+  const params = useParams<{ slug?: string; location?: string }>();
+  const locationSlug = params.location ? String(params.location) : "";
+  const locationQuery = locationSlug
+    ? `?location=${encodeURIComponent(locationSlug)}`
+    : "";
+  const locationPrefix = locationSlug ? `/${locationSlug}` : "";
+
+  const slugParam = String(params.slug ?? "");
+  const storeId = slugParam.includes("--")
+    ? (slugParam.split("--").pop() ?? "")
     : "";
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -288,7 +294,10 @@ export default function ShopByVendorPage() {
       return;
     }
     let cancelled = false;
-    fetch(`/api/stores/my?phone=${encodeURIComponent(session.phone)}`)
+    const url = new URL("/api/stores/my", window.location.origin);
+    url.searchParams.set("phone", session.phone);
+    if (locationSlug) url.searchParams.set("location", locationSlug);
+    fetch(url.toString())
       .then((r) => r.json())
       .then((data: unknown) => {
         if (cancelled) return;
@@ -313,7 +322,7 @@ export default function ShopByVendorPage() {
     return () => {
       cancelled = true;
     };
-  }, [ownedStoreIds]);
+  }, [locationSlug, ownedStoreIds]);
 
   useEffect(() => {
     let cancelled = false;
@@ -324,8 +333,8 @@ export default function ShopByVendorPage() {
         }
 
         const [storeRes, productRes] = await Promise.all([
-          fetch(`/api/stores/${encodeURIComponent(storeId)}`),
-          fetch("/api/products"),
+          fetch(`/api/stores/${encodeURIComponent(storeId)}${locationQuery}`),
+          fetch(`/api/products${locationQuery}`),
         ]);
 
         const storeBody: unknown = await storeRes.json().catch(() => null);
@@ -354,9 +363,8 @@ export default function ShopByVendorPage() {
           }
         }
 
-        const res = productRes;
-        const body: unknown = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(t("errUnknown"));
+        const body: unknown = await productRes.json().catch(() => null);
+        if (!productRes.ok) throw new Error(t("errUnknown"));
         if (!Array.isArray(body))
           throw new Error(t("errInvalidServerResponse"));
         if (!cancelled) setProducts(body as Product[]);
@@ -370,7 +378,7 @@ export default function ShopByVendorPage() {
     return () => {
       cancelled = true;
     };
-  }, [storeId, t]);
+  }, [locationQuery, storeId, t]);
 
   const filtered = useMemo(() => {
     if (!storeId) return [];
@@ -381,7 +389,7 @@ export default function ShopByVendorPage() {
   const displayName = storeName ?? t("shop");
   const publicUrl =
     storeMeta?.slug && storeId
-      ? `/shop/${storeMeta.slug}--${encodeURIComponent(storeId)}`
+      ? `${locationPrefix}/store/${storeMeta.slug}--${encodeURIComponent(storeId)}`
       : null;
 
   const websiteHref = normalizeUrl(storeMeta?.website ?? null);
@@ -397,7 +405,7 @@ export default function ShopByVendorPage() {
 
   return (
     <>
-      <BackLink href="/shop">{t("backToShop")}</BackLink>
+      <BackLink href={`${locationPrefix}/shop`}>{t("backToShop")}</BackLink>
 
       {storeMeta ? (
         <StoreCard aria-label={displayName}>

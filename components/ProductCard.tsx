@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import styled, { keyframes } from "styled-components";
 import { ProductDetailModal } from "@/components/ProductDetailModal";
 import { useToast } from "@/components/ToastProvider";
@@ -9,6 +10,7 @@ import { useCart } from "@/lib/cart-context";
 import { loadStoredSession } from "@/lib/session-storage";
 import { useLanguage } from "@/lib/useLanguage";
 import { slugify } from "@/lib/slug";
+import { useResolvedLocationSlug } from "@/lib/useResolvedLocationSlug";
 import type { Product } from "@/types/product";
 
 const addedPulse = keyframes`
@@ -239,54 +241,68 @@ function formatPrice(value: number) {
   return `R ${value.toFixed(2).replace(".", ",")}`;
 }
 
-let ownedStoreIdsCache: Set<string> | null | undefined;
-let ownedStoreIdsPromise: Promise<Set<string>> | null = null;
+const ownedStoreIdsCacheByLocation = new Map<string, Set<string>>();
+const ownedStoreIdsPromiseByLocation = new Map<string, Promise<Set<string>>>();
 
-async function loadOwnedStoreIds(): Promise<Set<string>> {
-  if (ownedStoreIdsCache !== undefined) return ownedStoreIdsCache ?? new Set();
+async function loadOwnedStoreIds(locationSlug?: string): Promise<Set<string>> {
+  const key = (locationSlug ?? "").trim();
+  const cached = ownedStoreIdsCacheByLocation.get(key);
+  if (cached) return cached;
   if (typeof window === "undefined") return new Set();
   const session = loadStoredSession();
   if (!session) {
-    ownedStoreIdsCache = new Set();
-    return ownedStoreIdsCache;
+    const empty = new Set<string>();
+    ownedStoreIdsCacheByLocation.set(key, empty);
+    return empty;
   }
-  if (!ownedStoreIdsPromise) {
-    ownedStoreIdsPromise = fetch(
-      `/api/stores/my?phone=${encodeURIComponent(session.phone)}`,
-    )
-      .then((r) => r.json())
-      .then((data: unknown) => {
-        const stores =
-          data && typeof data === "object" && "stores" in data
-            ? (data as { stores: unknown }).stores
-            : [];
-        const ids = Array.isArray(stores)
-          ? stores
-              .map((s) =>
-                s && typeof s === "object" && "id" in s
-                  ? (s as { id?: unknown }).id
-                  : null,
-              )
-              .filter((x): x is string => typeof x === "string")
+  const inflight = ownedStoreIdsPromiseByLocation.get(key);
+  if (inflight) return inflight;
+
+  const url = new URL("/api/stores/my", window.location.origin);
+  url.searchParams.set("phone", session.phone);
+  if (key) url.searchParams.set("location", key);
+
+  const promise = fetch(url.toString())
+    .then((r) => r.json())
+    .then((data: unknown) => {
+      const stores =
+        data && typeof data === "object" && "stores" in data
+          ? (data as { stores: unknown }).stores
           : [];
-        ownedStoreIdsCache = new Set(ids);
-        return ownedStoreIdsCache;
-      })
-      .catch(() => {
-        ownedStoreIdsCache = new Set();
-        return ownedStoreIdsCache;
-      })
-      .finally(() => {
-        ownedStoreIdsPromise = null;
-      });
-  }
-  return ownedStoreIdsPromise;
+      const ids = Array.isArray(stores)
+        ? stores
+            .map((s) =>
+              s && typeof s === "object" && "id" in s
+                ? (s as { id?: unknown }).id
+                : null,
+            )
+            .filter((x): x is string => typeof x === "string")
+        : [];
+      const set = new Set(ids);
+      ownedStoreIdsCacheByLocation.set(key, set);
+      return set;
+    })
+    .catch(() => {
+      const set = new Set<string>();
+      ownedStoreIdsCacheByLocation.set(key, set);
+      return set;
+    })
+    .finally(() => {
+      ownedStoreIdsPromiseByLocation.delete(key);
+    });
+  ownedStoreIdsPromiseByLocation.set(key, promise);
+  return promise;
 }
 
 export function ProductCard({ product }: { product: Product }) {
   const { addToCart } = useCart();
   const { t } = useLanguage();
   const toast = useToast();
+  const params = useParams<{ location?: string }>();
+  const resolvedLocation = useResolvedLocationSlug();
+  const locationSlug = params?.location
+    ? String(params.location)
+    : (resolvedLocation ?? "");
   const [addError, setAddError] = useState<string | null>(null);
   const [ownedStoreIds, setOwnedStoreIds] = useState<Set<string> | null>(null);
   const imageSrc = product.images?.[0] ?? product.image;
@@ -307,18 +323,19 @@ export function ProductCard({ product }: { product: Product }) {
     if (typeof window === "undefined") return;
     if (ownedStoreIds !== null) return;
     let cancelled = false;
-    loadOwnedStoreIds().then((ids) => {
+    loadOwnedStoreIds(locationSlug).then((ids) => {
       if (!cancelled) setOwnedStoreIds(ids);
     });
     return () => {
       cancelled = true;
     };
-  }, [ownedStoreIds]);
+  }, [locationSlug, ownedStoreIds]);
 
   const isOwnProduct = ownedStoreIds?.has(product.vendorId) ?? false;
+  const locationPrefix = locationSlug ? `/${locationSlug}` : "";
   const vendorHref =
-    product.vendorName && product.vendorId
-      ? `/shop/${slugify(product.vendorName) || "store"}--${encodeURIComponent(product.vendorId)}`
+    product.vendorName && product.vendorId && locationPrefix
+      ? `${locationPrefix}/store/${slugify(product.vendorName || "") || "store"}--${encodeURIComponent(product.vendorId)}`
       : null;
 
   return (

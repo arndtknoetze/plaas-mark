@@ -47,7 +47,7 @@ export async function GET(request: Request) {
       return NextResponse.json({
         locations: locations.map((location) => ({
           ...location,
-          href: buildLocationEntryUrl(location.slug, request.headers),
+          href: buildLocationEntryUrl(location.slug),
         })),
       });
     }
@@ -78,7 +78,7 @@ export async function GET(request: Request) {
         });
         return {
           ...location,
-          href: buildLocationEntryUrl(location.slug, request.headers),
+          href: buildLocationEntryUrl(location.slug),
           distanceKm: Math.round(d * 10) / 10,
         };
       })

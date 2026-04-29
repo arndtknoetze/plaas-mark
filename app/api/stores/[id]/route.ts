@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { logApiLocationDebug } from "@/lib/api-location-debug-log";
 import { prisma } from "@/lib/db";
-import { getLocationFromHeaders } from "@/lib/location";
+import { getLocationFromUrlOrHeaders } from "@/lib/location";
 import { slugify } from "@/lib/slug";
 
 function normalizePhone(input: unknown): string {
@@ -10,11 +10,11 @@ function normalizePhone(input: unknown): string {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const location = await getLocationFromHeaders();
+    const location = await getLocationFromUrlOrHeaders(request);
     const { id } = await params;
     const store = await prisma.store.findFirst({
       where: {
@@ -89,7 +89,7 @@ export async function PATCH(
 
   let resolvedLocationId: string | undefined;
   try {
-    resolvedLocationId = (await getLocationFromHeaders()).id;
+    resolvedLocationId = (await getLocationFromUrlOrHeaders(request)).id;
   } catch {
     resolvedLocationId = undefined;
   }

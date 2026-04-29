@@ -8,6 +8,7 @@ import { useLanguage } from "@/lib/useLanguage";
 import { loadStoredCustomer } from "@/lib/customer-storage";
 import { loadStoredSession } from "@/lib/session-storage";
 import { isOrderStatus } from "@/lib/order-status";
+import { useResolvedLocationSlug } from "@/lib/useResolvedLocationSlug";
 
 type OrderItemRow = {
   id: string;
@@ -360,6 +361,8 @@ function matchesFilter(order: OrderRow, q: string): boolean {
 export default function MyOrdersPage() {
   const { t } = useLanguage();
   const router = useRouter();
+  const location = useResolvedLocationSlug();
+  const shopHref = location ? `/${location}/shop` : "/";
   const [clientReady, setClientReady] = useState(false);
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
@@ -446,7 +449,7 @@ export default function MyOrdersPage() {
 
   return (
     <>
-      <BackLink href="/shop">{t("backToShop")}</BackLink>
+      <BackLink href={shopHref}>{t("backToShop")}</BackLink>
       <Title>{t("myOrders")}</Title>
 
       <TopBar>

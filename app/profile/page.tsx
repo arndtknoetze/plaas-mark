@@ -12,6 +12,7 @@ import {
   loadStoredSession,
   type StoredSession,
 } from "@/lib/session-storage";
+import { useResolvedLocationSlug } from "@/lib/useResolvedLocationSlug";
 
 type StoreRow = {
   id: string;
@@ -712,8 +713,11 @@ const CtaCard = styled(Card)`
   gap: 10px;
 `;
 
-function storePublicUrl(s: Pick<StoreRow, "slug" | "id">) {
-  return `/shop/${s.slug}--${s.id}`;
+function storePublicUrl(
+  s: Pick<StoreRow, "slug" | "id">,
+  locationSlug: string | null,
+) {
+  return locationSlug ? `/${locationSlug}/store/${s.slug}--${s.id}` : "/";
 }
 
 function isHexColor(x: string) {
@@ -741,6 +745,10 @@ function formatCurrencyZar(value: number) {
 export default function ProfilePage() {
   // Hydration-safe: render a stable “logged out” view first, then load localStorage after mount.
   const { t } = useLanguage();
+  const location = useResolvedLocationSlug();
+  const shopHref = location ? `/${location}/shop` : "/";
+  const storePublicUrlForLocation = (s: Pick<StoreRow, "slug" | "id">) =>
+    storePublicUrl(s, location);
   const searchParams = useSearchParams();
   const initialStoreParam = searchParams.get("store");
   const showFirstProductHint = searchParams.get("firstProduct") === "1";
@@ -972,7 +980,7 @@ export default function ProfilePage() {
             <Title>{t("account")}</Title>
             <Subtitle>{t("activitySignInPrompt")}</Subtitle>
             <TopLinks>
-              <PillLink href="/shop">{t("shop")}</PillLink>
+              <PillLink href={shopHref}>{t("shop")}</PillLink>
             </TopLinks>
           </TopInner>
         </DashboardTop>
@@ -995,7 +1003,7 @@ export default function ProfilePage() {
           <Title>{t("dashboardTitle")}</Title>
           <Subtitle>{t("helloManageStores", { name: session.name })}</Subtitle>
           <TopLinks>
-            <PillLink href="/shop">{t("shop")}</PillLink>
+            <PillLink href={shopHref}>{t("shop")}</PillLink>
             <PillLink href="/account/orders">{t("storeOrders")}</PillLink>
             <PillLink href="/activity">{t("activity")}</PillLink>
             <PillLink href="/my-orders">{t("myOrders")}</PillLink>
@@ -1097,7 +1105,7 @@ export default function ProfilePage() {
                             {s.isActive ? t("active") : t("inactive")}
                           </StatusPill>
                         </StoreTitleRow>
-                        <StoreMeta>{storePublicUrl(s)}</StoreMeta>
+                        <StoreMeta>{storePublicUrlForLocation(s)}</StoreMeta>
                       </StoreBtn>
                     ))}
                   </StoreList>
@@ -1139,13 +1147,15 @@ export default function ProfilePage() {
                   )}
                   <StoreBadgeText>
                     <StoreBadgeName>{draft.name}</StoreBadgeName>
-                    <StoreBadgeUrl>{storePublicUrl(draft)}</StoreBadgeUrl>
+                    <StoreBadgeUrl>
+                      {storePublicUrlForLocation(draft)}
+                    </StoreBadgeUrl>
                   </StoreBadgeText>
                 </StoreBadgeRow>
 
                 <Actions>
                   <StorePrimaryLink
-                    href={storePublicUrl(draft)}
+                    href={storePublicUrlForLocation(draft)}
                     $color={storeColor}
                   >
                     {t("goToStorePage")}
@@ -1379,7 +1389,9 @@ export default function ProfilePage() {
                         }
                       />
                       <Hint>
-                        {t("storeActiveHint", { url: storePublicUrl(draft) })}
+                        {t("storeActiveHint", {
+                          url: storePublicUrlForLocation(draft),
+                        })}
                       </Hint>
                     </ToggleRow>
                   </Field>
@@ -1525,7 +1537,7 @@ export default function ProfilePage() {
 
                 <Actions style={{ marginTop: 12 }}>
                   <StorePrimaryLink
-                    href={storePublicUrl(draft)}
+                    href={storePublicUrlForLocation(draft)}
                     $color={storeColor}
                   >
                     {t("viewStoreInShop")}

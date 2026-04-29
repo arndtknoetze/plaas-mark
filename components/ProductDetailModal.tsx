@@ -17,7 +17,7 @@ const sheetIn = keyframes`
 const Overlay = styled.div`
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: 10000;
   background: rgba(0, 0, 0, 0.46);
   display: grid;
   align-items: end;

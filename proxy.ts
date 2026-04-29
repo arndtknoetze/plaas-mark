@@ -6,13 +6,22 @@ import {
   verifyAdminSessionTokenEdge,
 } from "@/lib/admin-session-edge";
 
-/** Used when host has no usable subdomain (localhost, apex, www, etc.). */
-const DEFAULT_LOCATION_SLUG = "malmesbury";
-
-const HEADER_LOCATION_SLUG = "x-location-slug";
 const HEADER_APP_SHELL = "x-app-shell";
 
 export function proxy(request: NextRequest) {
+  const host = request.headers.get("host");
+  const fromSubdomain = resolveLocationSlugFromHost(host);
+  if (fromSubdomain) {
+    const url = request.nextUrl.clone();
+    const prefix = `/${fromSubdomain}`;
+    const alreadyOnLocationPath =
+      url.pathname === prefix || url.pathname.startsWith(`${prefix}/`);
+    if (!alreadyOnLocationPath) {
+      url.pathname = `${prefix}${url.pathname === "/" ? "" : url.pathname}`;
+      return NextResponse.redirect(url, 308);
+    }
+  }
+
   const pathname = request.nextUrl.pathname;
   if (
     pathname.startsWith("/admin") &&
@@ -39,12 +48,8 @@ export function proxy(request: NextRequest) {
 
 function continueProxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-  const host = request.headers.get("host");
-  const fromSubdomain = resolveLocationSlugFromHost(host);
-  const locationSlug = fromSubdomain ?? DEFAULT_LOCATION_SLUG;
 
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set(HEADER_LOCATION_SLUG, locationSlug);
   requestHeaders.set(
     HEADER_APP_SHELL,
     pathname.startsWith("/admin") ? "admin" : "site",

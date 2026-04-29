@@ -107,11 +107,15 @@ function getInitials(name: string) {
 export function StoreCarousel({
   stores,
   title,
+  locationSlug,
 }: {
   stores: Store[];
   title: string;
+  locationSlug?: string;
 }) {
   if (stores.length === 0) return null;
+
+  const prefix = locationSlug ? `/${locationSlug}` : "";
 
   return (
     <Wrap aria-label={title}>
@@ -120,7 +124,7 @@ export function StoreCarousel({
         {stores.map((s) => (
           <HorizontalScrollItem key={s.id}>
             <StoreLink
-              href={`/shop/${s.slug}--${encodeURIComponent(s.id)}`}
+              href={`${prefix}/${prefix ? "store" : "shop"}/${s.slug}--${encodeURIComponent(s.id)}`}
               aria-label={s.name}
               title={s.name}
             >

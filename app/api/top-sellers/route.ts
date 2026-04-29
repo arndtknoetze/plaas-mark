@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 import { logApiLocationDebug } from "@/lib/api-location-debug-log";
 import { prisma } from "@/lib/db";
-import { getLocationFromHeaders } from "@/lib/location";
+import { getLocationFromUrlOrHeaders } from "@/lib/location";
 import { slugify } from "@/lib/slug";
 import {
   findPublicStoreIdsForLocation,
   wherePublicStoresInLocation,
 } from "@/lib/stores-scope";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const location = await getLocationFromHeaders();
+    const location = await getLocationFromUrlOrHeaders(request);
 
     const vendorIdFilter = await findPublicStoreIdsForLocation(location.id);
     if (vendorIdFilter.length === 0) {

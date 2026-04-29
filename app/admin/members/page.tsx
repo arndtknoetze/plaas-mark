@@ -1,65 +1,30 @@
 import { prisma } from "@/lib/db";
-import {
-  EmptyState,
-  SectionHeader,
-  Table,
-  TableCard,
-  TableScroll,
-  Td,
-  Th,
-} from "@/components/admin/AdminUI";
+import { AdminMembersClient, type AdminMemberRow } from "./ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminMembersPage() {
   const members = await prisma.member.findMany({
     orderBy: { createdAt: "desc" },
-    take: 200,
-    select: { id: true, name: true, phone: true, role: true, createdAt: true },
+    take: 500,
+    select: {
+      id: true,
+      name: true,
+      phone: true,
+      role: true,
+      createdAt: true,
+      _count: { select: { stores: true, orders: true } },
+    },
   });
 
-  return (
-    <div>
-      <SectionHeader
-        title="Members"
-        subtitle="Admin users and marketplace members."
-      />
+  const initial: AdminMemberRow[] = members.map((m) => ({
+    id: m.id,
+    name: m.name,
+    phone: m.phone,
+    role: m.role,
+    createdAt: m.createdAt.toISOString(),
+    counts: { stores: m._count.stores, orders: m._count.orders },
+  }));
 
-      {members.length === 0 ? (
-        <EmptyState
-          title="No members yet"
-          body="Once members sign up, they’ll appear here."
-        />
-      ) : (
-        <TableCard>
-          <TableScroll>
-            <Table>
-              <thead>
-                <tr>
-                  <Th>Name</Th>
-                  <Th>Phone</Th>
-                  <Th>Role</Th>
-                  <Th>Created</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {members.map((m) => (
-                  <tr key={m.id}>
-                    <Td $strong>{m.name}</Td>
-                    <Td>{m.phone}</Td>
-                    <Td>{m.role}</Td>
-                    <Td>
-                      {m.createdAt.toLocaleDateString("en-ZA", {
-                        dateStyle: "medium",
-                      })}
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </TableScroll>
-        </TableCard>
-      )}
-    </div>
-  );
+  return <AdminMembersClient initial={initial} />;
 }

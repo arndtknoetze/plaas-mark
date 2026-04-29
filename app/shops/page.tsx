@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { useLanguage } from "@/lib/useLanguage";
+import { useResolvedLocationSlug } from "@/lib/useResolvedLocationSlug";
 
 const PageTitle = styled.h1`
   margin: 0 0 14px;
@@ -150,6 +151,8 @@ function parseStoresPayload(body: unknown): StoreRow[] {
 
 export default function ShopsPage() {
   const { t } = useLanguage();
+  const location = useResolvedLocationSlug();
+  const storePrefix = location ? `/${location}/store` : "";
   const [stores, setStores] = useState<StoreRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -251,12 +254,18 @@ export default function ShopsPage() {
               {filtered.map((s) => (
                 <StoreCard
                   key={s.id}
-                  href={`/shop/${s.slug}--${encodeURIComponent(s.id)}`}
+                  href={
+                    storePrefix
+                      ? `${storePrefix}/${s.slug}--${encodeURIComponent(s.id)}`
+                      : "/"
+                  }
                   aria-label={s.name}
                 >
                   <StoreName>{s.name}</StoreName>
                   <StoreMeta>
-                    /shop/{s.slug}--{s.id}
+                    {storePrefix
+                      ? `${storePrefix}/${s.slug}--${s.id}`
+                      : "Select a location"}
                   </StoreMeta>
                 </StoreCard>
               ))}

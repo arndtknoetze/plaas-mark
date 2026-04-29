@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { logApiLocationDebug } from "@/lib/api-location-debug-log";
 import { prisma } from "@/lib/db";
-import { getLocationFromHeaders } from "@/lib/location";
+import { getLocationFromUrlOrHeaders } from "@/lib/location";
 import { wherePublicStoresInLocation } from "@/lib/stores-scope";
 import { orderPostRateLimitResponse } from "@/lib/order-post-rate-limit";
 import { isPhoneOtpDisabled } from "@/lib/phone-otp";
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 
     let location;
     try {
-      location = await getLocationFromHeaders();
+      location = await getLocationFromUrlOrHeaders(request);
     } catch {
       return NextResponse.json(
         { error: "Location could not be resolved. Try again later." },
@@ -174,7 +174,7 @@ export async function POST(request: Request) {
 
   let location;
   try {
-    location = await getLocationFromHeaders();
+    location = await getLocationFromUrlOrHeaders(request);
   } catch {
     return NextResponse.json(
       { error: "Location could not be resolved. Try again later." },

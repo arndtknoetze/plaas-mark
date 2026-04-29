@@ -10,7 +10,7 @@ const DISMISS_KEY = "plaasmark-beta-modal-dismissed-v1";
 const Backdrop = styled.div`
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: 10000;
   background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(6px);
   display: flex;

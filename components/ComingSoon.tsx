@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import styled, { keyframes } from "styled-components";
+import { useResolvedLocationSlug } from "@/lib/useResolvedLocationSlug";
 
 const fadeUp = keyframes`
   from {
@@ -224,6 +225,9 @@ const SecondaryCta = styled(Link)`
 `;
 
 export function ComingSoon() {
+  const location = useResolvedLocationSlug();
+  const shopHref = location ? `/${location}/shop` : "/";
+
   return (
     <Root>
       <Glow aria-hidden />
@@ -254,11 +258,11 @@ export function ComingSoon() {
           maak dit binnekort makliker om plaasvars direk te ondersteun.
         </Subtitle>
         <CtaRow>
-          <PrimaryCta href="/shop">Blaai winkel</PrimaryCta>
+          <PrimaryCta href={shopHref}>Blaai winkel</PrimaryCta>
           <SecondaryCta href="/begin-verkoop">Ek wil verkoop</SecondaryCta>
         </CtaRow>
         <Foot>© {new Date().getFullYear()} PlaasMark</Foot>
-        <ShopHint href="/shop">Voorskou: kyk na die winkel →</ShopHint>
+        <ShopHint href={shopHref}>Voorskou: kyk na die winkel →</ShopHint>
       </Content>
     </Root>
   );

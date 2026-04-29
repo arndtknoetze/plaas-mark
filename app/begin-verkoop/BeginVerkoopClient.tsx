@@ -8,6 +8,7 @@ import { AccountOtpForm } from "@/components/AccountOtpForm";
 import { useToast } from "@/components/ToastProvider";
 import { useLanguage } from "@/lib/useLanguage";
 import { loadStoredSession, type StoredSession } from "@/lib/session-storage";
+import { useResolvedLocationSlug } from "@/lib/useResolvedLocationSlug";
 
 const Title = styled.h1`
   margin: 0 0 8px;
@@ -150,6 +151,8 @@ export function BeginVerkoopClient() {
   const router = useRouter();
   const { t, language } = useLanguage();
   const toast = useToast();
+  const location = useResolvedLocationSlug();
+  const shopHref = location ? `/${location}/shop` : "/";
   const [hydrated, setHydrated] = useState(false);
   const [session, setSession] = useState<StoredSession | null>(null);
   const [storeName, setStoreName] = useState("");
@@ -222,7 +225,7 @@ export function BeginVerkoopClient() {
         <Title>{t("beginSellingTitle")}</Title>
         <Subtitle>{t("signInFirstToCreateStore")}</Subtitle>
         <AccountOtpForm onSuccess={() => setSession(loadStoredSession())} />
-        <BackLink href="/shop">{t("backToShopShort")}</BackLink>
+        <BackLink href={shopHref}>{t("backToShopShort")}</BackLink>
       </>
     );
   }

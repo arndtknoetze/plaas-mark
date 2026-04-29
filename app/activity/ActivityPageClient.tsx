@@ -7,6 +7,7 @@ import { Container } from "@/components/Container";
 import { useToast } from "@/components/ToastProvider";
 import { loadStoredSession } from "@/lib/session-storage";
 import { useLanguage } from "@/lib/useLanguage";
+import { useResolvedLocationSlug } from "@/lib/useResolvedLocationSlug";
 import type { ActivityItem } from "@/types/activity";
 import type { Language } from "@/lib/i18n";
 
@@ -267,6 +268,8 @@ function groupActivity(
 export function ActivityPageClient() {
   const { t, language } = useLanguage();
   const toast = useToast();
+  const location = useResolvedLocationSlug();
+  const shopHref = location ? `/${location}/shop` : "/";
   const [sessionPhone, setSessionPhone] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -356,7 +359,7 @@ export function ActivityPageClient() {
     return (
       <Container>
         <PageWrap>
-          <BackLink href="/shop">{t("backToShop")}</BackLink>
+          <BackLink href={shopHref}>{t("backToShop")}</BackLink>
           <Title>{t("activity")}</Title>
           <Hint>
             {t("activitySignInPrompt")}{" "}
@@ -370,7 +373,7 @@ export function ActivityPageClient() {
   return (
     <Container>
       <PageWrap>
-        <BackLink href="/shop">{t("backToShop")}</BackLink>
+        <BackLink href={shopHref}>{t("backToShop")}</BackLink>
         <Title>{t("activity")}</Title>
         <Lead>{t("activityLead")}</Lead>
 

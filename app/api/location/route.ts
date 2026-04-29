@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { logApiLocationDebug } from "@/lib/api-location-debug-log";
-import { getLocationFromHeaders } from "@/lib/location";
+import { getLocationFromUrlOrHeaders } from "@/lib/location";
 
 /**
  * Current tenant location (from middleware `x-location-slug` + DB).
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const location = await getLocationFromHeaders();
+    // Optionally overridden via `?location=...` to support path-based routing.
+    const location = await getLocationFromUrlOrHeaders(request);
     await logApiLocationDebug("GET /api/location", {
       resolvedLocationId: location.id,
       resolvedSlug: location.slug,

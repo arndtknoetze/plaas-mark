@@ -3,6 +3,7 @@
 import styled from "styled-components";
 import { useLanguage, type TranslationKey } from "@/lib/useLanguage";
 import { TownBanner } from "@/components/TownBanner";
+import { storeLocationSlug } from "@/lib/location-storage";
 
 export type LocationChoice = {
   slug?: string;
@@ -166,6 +167,9 @@ export function LocationSelector({
               <CardLink
                 href={href}
                 aria-label={`${label} — ${t("startShopping")}`}
+                onClick={() => {
+                  if (slug) storeLocationSlug(slug);
+                }}
               >
                 <TownBanner
                   town={label}

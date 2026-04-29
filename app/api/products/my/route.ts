@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getLocationFromHeaders } from "@/lib/location";
+import { getLocationFromUrlOrHeaders } from "@/lib/location";
 import { prisma } from "@/lib/db";
 
 function normalizePhone(input: unknown): string {
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const location = await getLocationFromHeaders();
+    const location = await getLocationFromUrlOrHeaders(request);
 
     const result = await prisma.$transaction(async (tx) => {
       const member = await tx.member.findUnique({ where: { phone } });
@@ -40,8 +40,7 @@ export async function GET(request: Request) {
         return {
           status: 403 as const,
           payload: {
-            error:
-              "This shop is not in your current area. Open the correct area subdomain and try again.",
+            error: "This shop is not in your current area.",
           },
         };
       }

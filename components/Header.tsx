@@ -16,6 +16,7 @@ import {
   type StoredSession,
 } from "@/lib/session-storage";
 import type { PublicLocation } from "@/lib/location";
+import { useResolvedLocationSlug } from "@/lib/useResolvedLocationSlug";
 
 const Bar = styled.header`
   position: fixed;
@@ -266,15 +267,18 @@ const NotifBadge = styled(CartBadge)`
   font-size: 0.625rem;
 `;
 
-function CartIcon() {
+function BasketIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 -3 32 32"
+      fill="currentColor"
+      aria-hidden
+    >
       <path
-        d="M9 22a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        d="M439.429,738 L434,738 L434,734 L440,734 L439.429,738 L439.429,738 Z M438.571,744 L434,744 L434,740 L439.143,740 L438.571,744 L438.571,744 Z M438,748 C438,749.104 437.104,750 436,750 L434,750 L434,746 L438.286,746 L438,748 L438,748 Z M424,734 L432,734 L432,738 L424,738 L424,734 Z M424,740 L432,740 L432,744 L424,744 L424,740 Z M424,746 L432,746 L432,750 L424,750 L424,746 Z M422,738 L416.286,738 L416,734 L422,734 L422,738 L422,738 Z M422,744 L416.714,744 L416.429,740 L422,740 L422,744 L422,744 Z M422,750 L419,750 C417.896,750 417,749.104 417,748 L416.857,746 L422,746 L422,750 L422,750 Z M443,732 L436.474,732 L438.5,728 L441,728 C441.553,728 442,727.553 442,727 C442,726.447 441.553,726 441,726 L437,726 L433.916,732 L422.168,732 L419,726 L415,726 C414.447,726 414,726.447 414,727 C414,727.553 414.447,728 415,728 L417.5,728 L419.646,732 L413,732 C412.447,732 412,732.448 412,733 C412,733.553 412.447,734 413,734 L414,734 L415,748 C415,750.209 416.791,752 419,752 L436,752 C438.209,752 440,750.209 440,748 L442,734 L443,734 C443.553,734 444,733.553 444,733 C444,732.448 443.553,732 443,732 L443,732 Z"
+        transform="translate(-412 -726)"
       />
     </svg>
   );
@@ -317,6 +321,11 @@ function MenuIcon() {
 export function Header({ location }: { location: PublicLocation | null }) {
   const { t } = useLanguage();
   const router = useRouter();
+  const resolvedLocation = useResolvedLocationSlug();
+  const locationPrefix = resolvedLocation ? `/${resolvedLocation}` : "";
+  const locationQuery = resolvedLocation
+    ? `&location=${encodeURIComponent(resolvedLocation)}`
+    : "";
   const toast = useToast();
   const { items } = useCart();
   const count = items.reduce((sum, line) => sum + line.quantity, 0);
@@ -363,7 +372,9 @@ export function Header({ location }: { location: PublicLocation | null }) {
   useEffect(() => {
     if (!session) return;
     let cancelled = false;
-    fetch(`/api/stores/my?phone=${encodeURIComponent(session.phone)}`)
+    fetch(
+      `/api/stores/my?phone=${encodeURIComponent(session.phone)}${locationQuery}`,
+    )
       .then((r) => r.json())
       .then((data: unknown) => {
         if (cancelled) return;
@@ -380,7 +391,7 @@ export function Header({ location }: { location: PublicLocation | null }) {
     return () => {
       cancelled = true;
     };
-  }, [session]);
+  }, [locationQuery, session]);
 
   useEffect(() => {
     if (!session) return;
@@ -481,12 +492,12 @@ export function Header({ location }: { location: PublicLocation | null }) {
           ) : null}
           <LanguageToggle />
           <CartLink
-            href="/cart"
+            href={resolvedLocation ? `${locationPrefix}/cart` : "/"}
             aria-label={
               count ? `${t("cart")}, ${count} ${t("itemsWord")}` : t("cart")
             }
           >
-            <CartIcon />
+            <BasketIcon />
             {count > 0 ? (
               <CartBadge>{count > 99 ? "99+" : count}</CartBadge>
             ) : null}
@@ -511,7 +522,10 @@ export function Header({ location }: { location: PublicLocation | null }) {
                 ) : null}
 
                 <MenuGroupLabel>Browse</MenuGroupLabel>
-                <MenuItem role="menuitem" href="/shop">
+                <MenuItem
+                  role="menuitem"
+                  href={resolvedLocation ? `${locationPrefix}/shop` : "/"}
+                >
                   {t("shop")}
                 </MenuItem>
                 <MenuItem role="menuitem" href="/shops">

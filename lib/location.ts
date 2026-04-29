@@ -1,11 +1,8 @@
 import type { Location } from "@prisma/client";
-import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
 
 /** Must match middleware default when no subdomain is detected. */
 export const DEFAULT_LOCATION_SLUG = "malmesbury";
-
-const HEADER_LOCATION_SLUG = "x-location-slug";
 
 async function loadLocationBySlug(slug: string): Promise<Location> {
   const primary = await prisma.location.findUnique({
@@ -23,26 +20,35 @@ async function loadLocationBySlug(slug: string): Promise<Location> {
   );
 }
 
-/**
- * Resolves the current tenant `Location` from middleware-injected headers and DB.
- * If the slug from headers has no row, falls back to {@link DEFAULT_LOCATION_SLUG}.
- */
-export async function getLocationFromHeaders(): Promise<Location> {
-  const h = await headers();
-  const slug = h.get(HEADER_LOCATION_SLUG)?.trim() || DEFAULT_LOCATION_SLUG;
+export async function getLocationBySlug(slug: string): Promise<Location> {
   return loadLocationBySlug(slug);
 }
 
+export async function getLocationFromUrlOrHeaders(
+  request: Request,
+): Promise<Location> {
+  const url = new URL(request.url);
+  const slug = url.searchParams.get("location")?.trim();
+  if (slug) return loadLocationBySlug(slug);
+  return loadLocationBySlug(DEFAULT_LOCATION_SLUG);
+}
+
 /**
- * Same as {@link getLocationFromHeaders} but reads `Request` headers (e.g. route handlers).
- * Middleware sets `x-location-slug` on the incoming request.
+ * URL-only location routing: subdomain/middleware headers are ignored.
+ * This function remains for backwards compatibility in server components.
+ */
+export async function getLocationFromHeaders(): Promise<Location> {
+  return loadLocationBySlug(DEFAULT_LOCATION_SLUG);
+}
+
+/**
+ * URL-only location routing: request headers are ignored.
  */
 export async function getLocationFromRequest(
   request: Request,
 ): Promise<Location> {
-  const slug =
-    request.headers.get(HEADER_LOCATION_SLUG)?.trim() || DEFAULT_LOCATION_SLUG;
-  return loadLocationBySlug(slug);
+  void request;
+  return loadLocationBySlug(DEFAULT_LOCATION_SLUG);
 }
 
 export type PublicLocation = Pick<

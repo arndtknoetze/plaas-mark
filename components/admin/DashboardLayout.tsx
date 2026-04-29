@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import styled, { css } from "styled-components";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -191,6 +191,45 @@ const Burger = styled.button`
     outline-offset: 2px;
   }
 `;
+
+const BackButton = styled.button`
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: ${({ theme }) => theme.colors.textDark};
+  font-weight: 900;
+
+  &:hover {
+    background: #ffffff;
+    color: ${({ theme }) => theme.colors.primary};
+    border-color: rgba(0, 0, 0, 0.14);
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.colors.accent};
+    outline-offset: 2px;
+  }
+`;
+
+function IconArrowLeft() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M15 18l-6-6 6-6"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 const TitleBlock = styled.div`
   min-width: 0;
@@ -414,6 +453,7 @@ const NAV: NavItem[] = [
   { href: "/admin/locations", label: "Locations", icon: <IconStore /> },
   { href: "/admin/stores", label: "Stores", icon: <IconStore /> },
   { href: "/admin/products", label: "Products", icon: <IconBox /> },
+  { href: "/admin/members", label: "Members", icon: <IconUsers /> },
   { href: "/admin/waitlist", label: "Waitlist", icon: <IconUsers /> },
   { href: "/admin/sponsors", label: "Sponsors", icon: <IconUsers /> },
   { href: "/admin/analytics", label: "Analytics", icon: <IconChart /> },
@@ -446,6 +486,7 @@ export function DashboardLayout({
   sidebarFooter?: React.ReactNode;
 }) {
   const pathname = usePathname() || "/admin";
+  const router = useRouter();
   const pageTitle = useMemo(() => titleFromPath(pathname), [pathname]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -504,6 +545,16 @@ export function DashboardLayout({
 
             <TopRight>
               <UserPill title={userName}>{userName}</UserPill>
+              <BackButton
+                type="button"
+                aria-label="Back"
+                onClick={() => {
+                  router.push("/");
+                }}
+              >
+                <IconArrowLeft />
+                Back
+              </BackButton>
               <LanguageToggle />
             </TopRight>
           </TopBarInner>

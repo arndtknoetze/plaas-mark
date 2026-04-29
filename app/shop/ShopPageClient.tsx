@@ -202,7 +202,11 @@ function parseTopSellersPayload(body: unknown): TopSellerRow[] {
   );
 }
 
-export default function ShopPageClient() {
+export default function ShopPageClient({
+  locationSlug,
+}: {
+  locationSlug?: string;
+}) {
   const { t, language } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [stores, setStores] = useState<StoreOption[]>([]);
@@ -214,11 +218,16 @@ export default function ShopPageClient() {
   const [areaLabel, setAreaLabel] = useState<string | null>(null);
   const [ownedStoreIds, setOwnedStoreIds] = useState<Set<string> | null>(null);
 
+  const locationQuery = locationSlug
+    ? `?location=${encodeURIComponent(locationSlug)}`
+    : "";
+  const locationPrefix = locationSlug ? `/${locationSlug}` : "";
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/location");
+        const res = await fetch(`/api/location${locationQuery}`);
         const body: unknown = await res.json().catch(() => null);
         if (!res.ok || !body || typeof body !== "object") return;
         const name = (body as { name?: unknown }).name;
@@ -230,7 +239,7 @@ export default function ShopPageClient() {
     return () => {
       cancelled = true;
     };
-  }, [t]);
+  }, [locationQuery, t]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -243,7 +252,10 @@ export default function ShopPageClient() {
       return;
     }
     let cancelled = false;
-    fetch(`/api/stores/my?phone=${encodeURIComponent(session.phone)}`)
+    const url = new URL("/api/stores/my", window.location.origin);
+    url.searchParams.set("phone", session.phone);
+    if (locationSlug) url.searchParams.set("location", locationSlug);
+    fetch(url.toString())
       .then((r) => r.json())
       .then((data: unknown) => {
         if (cancelled) return;
@@ -268,7 +280,7 @@ export default function ShopPageClient() {
     return () => {
       cancelled = true;
     };
-  }, [ownedStoreIds]);
+  }, [locationSlug, ownedStoreIds]);
 
   useEffect(() => {
     let cancelled = false;
@@ -277,9 +289,9 @@ export default function ShopPageClient() {
       try {
         setLoading(true);
         const [prodRes, storeRes, topRes] = await Promise.all([
-          fetch("/api/products"),
-          fetch("/api/stores"),
-          fetch("/api/top-sellers").catch(() => null),
+          fetch(`/api/products${locationQuery}`),
+          fetch(`/api/stores${locationQuery}`),
+          fetch(`/api/top-sellers${locationQuery}`).catch(() => null),
         ]);
 
         const prodBody: unknown = await prodRes.json().catch(() => null);
@@ -327,7 +339,7 @@ export default function ShopPageClient() {
     return () => {
       cancelled = true;
     };
-  }, [t]);
+  }, [locationQuery, t]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -401,6 +413,7 @@ export default function ShopPageClient() {
             <StoreCarousel
               stores={stores}
               title={language === "af" ? "Winkels naby jou" : "Stores near you"}
+              locationSlug={locationSlug}
             />
           </Section>
 
@@ -424,9 +437,9 @@ export default function ShopPageClient() {
                   const v = stores.find((x) => x.id === store);
                   return v ? (
                     <ShopLink
-                      href={`/shop/${v.slug}--${encodeURIComponent(v.id)}`}
+                      href={`${locationPrefix}/store/${v.slug}--${encodeURIComponent(v.id)}`}
                     >
-                      /shop/{v.slug}--{v.id}
+                      {locationPrefix}/store/{v.slug}--{v.id}
                     </ShopLink>
                   ) : null;
                 })()}

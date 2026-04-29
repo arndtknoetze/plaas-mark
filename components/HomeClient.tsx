@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import styled from "styled-components";
 import { loadStoredSession } from "@/lib/session-storage";
+import { useResolvedLocationSlug } from "@/lib/useResolvedLocationSlug";
 
 type SellerRow = {
   storeId: string;
@@ -177,6 +178,9 @@ function isSellerRow(x: unknown): x is SellerRow {
 }
 
 export function HomeClient() {
+  const location = useResolvedLocationSlug();
+  const shopHref = location ? `/${location}/shop` : "/";
+  const storePrefix = location ? `/${location}/store` : "";
   const [session] = useState(() => loadStoredSession());
   const name = session?.name ?? null;
   const [loading, setLoading] = useState(true);
@@ -221,7 +225,7 @@ export function HomeClient() {
           bestelling in minute.
         </HeroText>
         <HeroActions>
-          <Primary href="/shop">Begin inkopies</Primary>
+          <Primary href={shopHref}>Begin inkopies</Primary>
           {session ? (
             <Secondary href="/my-orders">My bestellings</Secondary>
           ) : null}
@@ -240,7 +244,11 @@ export function HomeClient() {
           {sellers.map((s) => (
             <SellerCard
               key={s.storeId}
-              href={`/shop/${s.shopSlug}--${encodeURIComponent(s.storeId)}`}
+              href={
+                storePrefix
+                  ? `${storePrefix}/${s.shopSlug}--${encodeURIComponent(s.storeId)}`
+                  : "/"
+              }
             >
               <SellerName>{s.storeName}</SellerName>
               <SellerMeta>{s.unitsSold} items verkoop</SellerMeta>

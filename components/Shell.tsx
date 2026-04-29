@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import styled from "styled-components";
 import { Container } from "@/components/Container";
 import { BetaWelcomeModal } from "@/components/BetaWelcomeModal";
+import { LocationPersist } from "@/components/LocationPersist";
 import { PageWrapper } from "@/components/PageWrapper";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
@@ -49,6 +50,7 @@ export function Shell({
     <ToastProvider>
       <Root>
         <Header location={location} />
+        <LocationPersist />
         <BetaWelcomeModal />
         <ServiceWorkerRegister />
         <VisitTracker />

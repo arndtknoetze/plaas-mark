@@ -4,21 +4,27 @@ import { headers } from "next/headers";
 
 const TAG = "[loc-debug]";
 
-/** Logs request `x-location-slug` plus optional entity location ids for scoping checks. */
+/** Logs optional `?location=` plus optional entity location ids for scoping checks. */
 export async function logApiLocationDebug(
   route: string,
   details?: Record<string, unknown>,
 ): Promise<void> {
   try {
     const h = await headers();
-    const slug = h.get("x-location-slug")?.trim() ?? null;
+    const url = h.get("x-url")?.trim() ?? "";
+    const locationFromUrl =
+      url && url.includes("?")
+        ? (new URL(url, "https://example.invalid").searchParams
+            .get("location")
+            ?.trim() ?? null)
+        : null;
     console.info(TAG, route, {
-      slug: slug ?? "(missing)",
+      location: locationFromUrl ?? "(missing)",
       ...details,
     });
   } catch {
     console.info(TAG, route, {
-      slug: "(headers unavailable)",
+      location: "(unavailable)",
       ...details,
     });
   }
