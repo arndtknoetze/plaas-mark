@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { getSessionSigningSecret } from "@/lib/session-secret";
 
 const COOKIE_NAME = "plaasmark-user";
 
@@ -33,10 +34,10 @@ export function getUserCookieName() {
 }
 
 export function createUserSessionToken(payload: UserSessionPayload): string {
-  const secret = process.env.ADMIN_SESSION_SECRET ?? "";
+  const secret = getSessionSigningSecret();
   if (!secret) {
     throw new Error(
-      "ADMIN_SESSION_SECRET is required (used for signing user/admin sessions).",
+      "SESSION_SECRET or ADMIN_SESSION_SECRET is required for signing user sessions.",
     );
   }
   const json = JSON.stringify(payload);
@@ -48,7 +49,7 @@ export function createUserSessionToken(payload: UserSessionPayload): string {
 export function verifyUserSessionToken(
   token: string,
 ): UserSessionPayload | null {
-  const secret = process.env.ADMIN_SESSION_SECRET ?? "";
+  const secret = getSessionSigningSecret();
   if (!secret) return null;
 
   const parts = token.split(".");

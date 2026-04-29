@@ -148,6 +148,18 @@ export async function POST(request: Request) {
     if (err instanceof ForbiddenLoginError) {
       return NextResponse.json({ error: err.message }, { status: 403 });
     }
+    if (
+      err instanceof Error &&
+      err.message.includes("SESSION_SECRET or ADMIN_SESSION_SECRET")
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Login is not configured: set SESSION_SECRET (or ADMIN_SESSION_SECRET) on the server.",
+        },
+        { status: 503 },
+      );
+    }
     return NextResponse.json({ error: "Failed to log in." }, { status: 500 });
   }
 }

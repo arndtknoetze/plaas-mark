@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { getSessionSigningSecret } from "@/lib/session-secret";
 
 const COOKIE_NAME = "plaasmark-admin";
 
@@ -33,9 +34,11 @@ export function getAdminCookieName() {
 }
 
 export function createAdminSessionToken(payload: AdminSessionPayload): string {
-  const secret = process.env.ADMIN_SESSION_SECRET ?? "";
+  const secret = getSessionSigningSecret();
   if (!secret) {
-    throw new Error("ADMIN_SESSION_SECRET is required for admin sessions.");
+    throw new Error(
+      "SESSION_SECRET or ADMIN_SESSION_SECRET is required for admin sessions.",
+    );
   }
   const json = JSON.stringify(payload);
   const data = base64UrlEncode(json);
@@ -46,7 +49,7 @@ export function createAdminSessionToken(payload: AdminSessionPayload): string {
 export function verifyAdminSessionToken(
   token: string,
 ): AdminSessionPayload | null {
-  const secret = process.env.ADMIN_SESSION_SECRET ?? "";
+  const secret = getSessionSigningSecret();
   if (!secret) return null;
 
   const parts = token.split(".");

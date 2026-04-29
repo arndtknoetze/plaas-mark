@@ -1,3 +1,5 @@
+import { getSessionSigningSecret } from "@/lib/session-secret";
+
 const COOKIE_NAME = "plaasmark-admin";
 
 type AdminSessionPayload = {
@@ -43,7 +45,7 @@ function base64UrlDecodeToString(input: string): string | null {
 export async function verifyAdminSessionTokenEdge(
   token: string,
 ): Promise<AdminSessionPayload | null> {
-  const secret = process.env.ADMIN_SESSION_SECRET ?? "";
+  const secret = getSessionSigningSecret();
   if (!secret) return null;
 
   const parts = token.split(".");
