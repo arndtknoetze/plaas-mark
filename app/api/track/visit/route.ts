@@ -18,6 +18,15 @@ type Body = {
   props?: unknown;
 };
 
+function normalizePhone(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+function isAnalyticsSuppressedForPhone(phone: string | null | undefined) {
+  if (!phone) return false;
+  return normalizePhone(phone) === "0724592879";
+}
+
 function readClientIp(request: Request): string | null {
   const forwardedFor = request.headers.get("x-forwarded-for");
   if (forwardedFor) {
@@ -95,10 +104,12 @@ export async function POST(request: Request) {
   if (memberId) {
     const existingMember = await prisma.member.findUnique({
       where: { id: memberId },
-      select: { id: true },
+      select: { id: true, phone: true },
     });
     if (!existingMember) {
       memberId = undefined;
+    } else if (isAnalyticsSuppressedForPhone(existingMember.phone)) {
+      return NextResponse.json({ ok: true });
     }
   }
 

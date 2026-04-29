@@ -20,6 +20,16 @@ export const GlobalStyles = createGlobalStyle`
     box-sizing: border-box;
   }
 
+  :root {
+    --pm-header-offset: 72px;
+  }
+
+  @media (min-width: 768px) {
+    :root {
+      --pm-header-offset: 80px;
+    }
+  }
+
   * {
     margin: 0;
   }
@@ -38,11 +48,31 @@ export const GlobalStyles = createGlobalStyle`
   body {
     min-height: 100%;
     background-color: ${({ theme }) => theme.colors.background};
+    background-image: none;
     color: ${({ theme }) => theme.colors.textDark};
     font-family: ${systemStack};
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-color: ${({ theme }) => theme.colors.background};
+    background-image: url("/background-mobile.png");
+    background-repeat: no-repeat;
+    background-position: center top;
+    background-size: cover;
+  }
+
+  @media (min-width: 768px) {
+    body::before {
+      background-image: url("/background-desktop.png");
+    }
   }
 
   img,

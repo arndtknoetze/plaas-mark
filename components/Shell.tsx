@@ -25,6 +25,7 @@ const Root = styled.div`
 const Main = styled.main`
   flex: 1;
   width: 100%;
+  padding-top: var(--pm-header-offset, 0px);
 `;
 
 export function Shell({

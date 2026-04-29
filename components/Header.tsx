@@ -18,8 +18,10 @@ import {
 import type { PublicLocation } from "@/lib/location";
 
 const Bar = styled.header`
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 50;
   background: #ffffff;
   box-shadow:

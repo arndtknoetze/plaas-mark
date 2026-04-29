@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { LandingLocationPrompt } from "@/components/LandingLocationPrompt";
+import { LandingLocationDiscovery } from "@/components/LandingLocationDiscovery";
 import { LocationSelector } from "@/components/LocationSelector";
 import { resolveLocationSlugFromHost } from "@/lib/host-subdomain";
 import { buildLocationEntryUrl } from "@/lib/location-entry-url";
@@ -55,10 +55,10 @@ export default async function HomePage({
 
   return (
     <>
-      <LandingLocationPrompt />
+      <LandingLocationDiscovery />
       <LocationSelector
-        headingKey="welcomeTitle"
-        leadKey="selectLocationLead"
+        headingKey="allLocationsTitle"
+        leadKey="allLocationsLead"
         locations={locations}
         pagination={{
           page: safePage,
