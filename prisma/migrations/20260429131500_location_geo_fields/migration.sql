@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE `Location`
+  ADD COLUMN `province` VARCHAR(191) NULL,
+  ADD COLUMN `lat` DOUBLE NULL,
+  ADD COLUMN `lng` DOUBLE NULL;

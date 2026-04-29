@@ -3,6 +3,11 @@ import { UAParser } from "ua-parser-js";
 import { createHash, randomUUID } from "crypto";
 import { prisma } from "@/lib/db";
 import { getLocationFromRequest } from "@/lib/location";
+import {
+  getAdminCookieName,
+  verifyAdminSessionToken,
+} from "@/lib/admin-session";
+import { getUserCookieName, verifyUserSessionToken } from "@/lib/user-session";
 
 const ANON_COOKIE = "plaasmark-anon";
 
@@ -45,6 +50,12 @@ function getOrCreateAnonId(request: Request): {
   return { anonId: randomUUID(), isNew: true };
 }
 
+function readCookieValue(cookieHeader: string, name: string): string {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${escaped}=([^;]+)`));
+  return match?.[1]?.trim() ?? "";
+}
+
 export async function POST(request: Request) {
   let body: Body;
   try {
@@ -75,6 +86,21 @@ export async function POST(request: Request) {
   const ipHash = ip ? hashIp(ip) : undefined;
 
   const { anonId, isNew } = getOrCreateAnonId(request);
+  const cookieHeader = request.headers.get("cookie") ?? "";
+  const userToken = readCookieValue(cookieHeader, getUserCookieName());
+  const userSession = userToken ? verifyUserSessionToken(userToken) : null;
+  const adminToken = readCookieValue(cookieHeader, getAdminCookieName());
+  const adminSession = adminToken ? verifyAdminSessionToken(adminToken) : null;
+  let memberId = userSession?.memberId || adminSession?.memberId || undefined;
+  if (memberId) {
+    const existingMember = await prisma.member.findUnique({
+      where: { id: memberId },
+      select: { id: true },
+    });
+    if (!existingMember) {
+      memberId = undefined;
+    }
+  }
 
   let locationId: string | undefined;
   try {
@@ -85,8 +111,8 @@ export async function POST(request: Request) {
 
   const session = await prisma.analyticsSession.upsert({
     where: { anonId },
-    create: { anonId },
-    update: { lastSeenAt: new Date() },
+    create: { anonId, memberId },
+    update: { lastSeenAt: new Date(), ...(memberId ? { memberId } : {}) },
     select: { id: true },
   });
 

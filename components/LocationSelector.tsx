@@ -2,11 +2,13 @@
 
 import styled from "styled-components";
 import { useLanguage, type TranslationKey } from "@/lib/useLanguage";
+import { TownBanner } from "@/components/TownBanner";
 
 export type LocationChoice = {
+  slug?: string;
   label: string;
   href: string;
-  imageUrl: string;
+  province?: string | null;
 };
 
 const Wrap = styled.section`
@@ -61,9 +63,7 @@ const Grid = styled.ul`
 `;
 
 const CardLink = styled.a`
-  display: flex;
-  flex-direction: column;
-  min-height: 320px;
+  display: block;
   border-radius: 18px;
   overflow: hidden;
   text-decoration: none;
@@ -91,62 +91,35 @@ const CardLink = styled.a`
   }
 `;
 
-const CardImage = styled.div<{ $src: string }>`
-  position: relative;
-  height: 168px;
-  background-image: url(${({ $src }) => JSON.stringify($src)});
-  background-size: cover;
-  background-position: center;
-
-  &::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      180deg,
-      rgba(0, 0, 0, 0) 0%,
-      rgba(0, 0, 0, 0.18) 70%,
-      rgba(0, 0, 0, 0.32) 100%
-    );
-  }
-`;
-
-const CardBody = styled.div`
-  padding: 14px 14px 16px;
+const Pager = styled.nav`
+  margin-top: 18px;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 10px;
-  flex: 1;
+  flex-wrap: wrap;
 `;
 
-const CardTitle = styled.div`
-  font-size: 1.15rem;
-  font-weight: 950;
-  letter-spacing: -0.02em;
-  color: ${({ theme }) => theme.colors.textDark};
-`;
-
-const CardMeta = styled.div`
-  font-size: 0.92rem;
-  line-height: 1.45;
-  color: ${({ theme }) => theme.colors.textLight};
-`;
-
-const CardCta = styled.div`
-  margin-top: auto;
+const PagerLink = styled.a<{ $disabled?: boolean }>`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 46px;
-  border-radius: 12px;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  text-decoration: none;
   font-weight: 900;
-  background: ${({ theme }) => theme.colors.primary};
-  color: #ffffff;
-  transition: background 0.14s ease;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  color: ${({ theme }) => theme.colors.textDark};
+  background: #fff;
+  opacity: ${({ $disabled }) => ($disabled ? 0.45 : 1)};
+  pointer-events: ${({ $disabled }) => ($disabled ? "none" : "auto")};
+`;
 
-  ${CardLink}:hover & {
-    background: ${({ theme }) => theme.colors.secondary};
-  }
+const PagerMeta = styled.span`
+  font-size: 0.92rem;
+  color: ${({ theme }) => theme.colors.textLight};
+  font-weight: 700;
 `;
 
 export function LocationSelector({
@@ -154,15 +127,30 @@ export function LocationSelector({
   headingKey,
   leadKey,
   locations,
+  pagination,
 }: {
   heading?: string;
   headingKey?: TranslationKey;
   leadKey?: TranslationKey;
   locations: LocationChoice[];
+  pagination?: {
+    page: number;
+    totalPages: number;
+    totalItems: number;
+    perPage: number;
+    basePath: string;
+  };
 }) {
   const { t } = useLanguage();
   const resolvedHeading = headingKey ? t(headingKey) : (heading ?? "");
   const resolvedLead = leadKey ? t(leadKey) : t("selectLocationLead");
+  const page = pagination?.page ?? 1;
+  const totalPages = pagination?.totalPages ?? 1;
+  const basePath = pagination?.basePath ?? "/";
+  const hasPrev = page > 1;
+  const hasNext = page < totalPages;
+  const prevHref = `${basePath}?page=${Math.max(1, page - 1)}`;
+  const nextHref = `${basePath}?page=${Math.min(totalPages, page + 1)}`;
 
   return (
     <Wrap aria-labelledby="location-selector-heading">
@@ -173,22 +161,34 @@ export function LocationSelector({
         </Hero>
 
         <Grid>
-          {locations.map(({ label, href, imageUrl }) => (
+          {locations.map(({ label, href, slug, province }) => (
             <li key={href}>
               <CardLink
                 href={href}
                 aria-label={`${label} — ${t("startShopping")}`}
               >
-                <CardImage $src={imageUrl} />
-                <CardBody>
-                  <CardTitle>{label}</CardTitle>
-                  <CardMeta>{t("welcomeDescription")}</CardMeta>
-                  <CardCta>{t("startShopping")}</CardCta>
-                </CardBody>
+                <TownBanner
+                  town={label}
+                  province={province}
+                  slug={slug ?? label}
+                />
               </CardLink>
             </li>
           ))}
         </Grid>
+        {pagination ? (
+          <Pager aria-label="Location pages">
+            <PagerLink href={prevHref} $disabled={!hasPrev}>
+              Previous
+            </PagerLink>
+            <PagerMeta>
+              Page {page} of {totalPages} ({pagination.totalItems} locations)
+            </PagerMeta>
+            <PagerLink href={nextHref} $disabled={!hasNext}>
+              Next
+            </PagerLink>
+          </Pager>
+        ) : null}
       </Inner>
     </Wrap>
   );

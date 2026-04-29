@@ -42,6 +42,9 @@ model Location {
   id        String   @id @default(cuid())
   name      String
   slug      String   @unique
+  province  String?
+  lat       Float?
+  lng       Float?
   bannerImageUrl String? @db.LongText
   createdAt DateTime @default(now())
 

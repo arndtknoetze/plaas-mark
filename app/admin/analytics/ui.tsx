@@ -34,6 +34,7 @@ type Snapshot = {
   totals: {
     events: number;
     sessions: number;
+    loggedInEvents: number;
     bots: number;
     mobile: number;
     desktop: number;
@@ -45,6 +46,18 @@ type Snapshot = {
     paths: { path: string; count: number }[];
     stores: { storeId: string; name: string; count: number }[];
     devices: { name: string; value: number }[];
+    locations: {
+      locationId: string;
+      name: string;
+      slug: string | null;
+      count: number;
+    }[];
+    members: {
+      memberId: string;
+      name: string;
+      phone: string | null;
+      count: number;
+    }[];
   };
   recent: {
     id: string;
@@ -52,12 +65,20 @@ type Snapshot = {
     type: string;
     path: string;
     store: { id: string; name: string } | null;
+    location: { id: string; name: string; slug: string | null } | null;
+    member: { id: string; name: string; phone: string | null } | null;
     deviceType: string;
     isMobile: boolean;
     isBot: boolean;
     browser: string | null;
     os: string | null;
   }[];
+  recentPagination: {
+    page: number;
+    perPage: number;
+    total: number;
+    totalPages: number;
+  };
 };
 
 const Panel = styled(BaseCard)`
@@ -138,6 +159,12 @@ export function AnalyticsDashboard({ snapshot }: { snapshot: Snapshot }) {
         </StatCol>
         <StatCol>
           <StatCard label="Sessions" value={snapshot.totals.sessions} />
+        </StatCol>
+        <StatCol>
+          <StatCard
+            label="Logged-in events"
+            value={snapshot.totals.loggedInEvents}
+          />
         </StatCol>
         <StatCol>
           <StatCard label="Mobile" value={snapshot.totals.mobile} />
@@ -260,6 +287,69 @@ export function AnalyticsDashboard({ snapshot }: { snapshot: Snapshot }) {
         </div>
 
         <div style={{ gridColumn: "span 12" }}>
+          <PanelCard
+            title="Top locations"
+            icon={<MousePointerClick size={18} />}
+          >
+            <div style={{ width: "100%", height: 280 }}>
+              <ResponsiveContainer>
+                <BarChart data={snapshot.top.locations}>
+                  <CartesianGrid stroke="rgba(0,0,0,0.08)" />
+                  <XAxis
+                    dataKey="name"
+                    stroke="rgba(0,0,0,0.55)"
+                    tick={{ fontSize: 11 }}
+                    interval={0}
+                    angle={-10}
+                    height={55}
+                  />
+                  <YAxis stroke="rgba(0,0,0,0.55)" tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{
+                      background: "#ffffff",
+                      border: "1px solid rgba(0,0,0,0.12)",
+                      borderRadius: 12,
+                      color: "rgba(0,0,0,0.92)",
+                    }}
+                  />
+                  <Bar dataKey="count" fill="#f59e0b" radius={[10, 10, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </PanelCard>
+        </div>
+
+        <div style={{ gridColumn: "span 12" }}>
+          <PanelCard title="Top logged-in users" icon={<Activity size={18} />}>
+            <div style={{ width: "100%", height: 280 }}>
+              <ResponsiveContainer>
+                <BarChart data={snapshot.top.members}>
+                  <CartesianGrid stroke="rgba(0,0,0,0.08)" />
+                  <XAxis
+                    dataKey="name"
+                    stroke="rgba(0,0,0,0.55)"
+                    tick={{ fontSize: 11 }}
+                    interval={0}
+                    angle={-10}
+                    height={55}
+                  />
+                  <YAxis stroke="rgba(0,0,0,0.55)" tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{
+                      background: "#ffffff",
+                      border: "1px solid rgba(0,0,0,0.12)",
+                      borderRadius: 12,
+                      color: "rgba(0,0,0,0.92)",
+                    }}
+                  />
+                  <Bar dataKey="count" fill="#ef4444" radius={[10, 10, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </PanelCard>
+        </div>
+
+        <div style={{ gridColumn: "span 12" }}>
           <PanelCard title="Devices" icon={<Bot size={18} />}>
             <div
               style={{
@@ -326,6 +416,25 @@ export function AnalyticsDashboard({ snapshot }: { snapshot: Snapshot }) {
 
         <div style={{ gridColumn: "span 12" }}>
           <PanelCard title="Recent events" icon={<Activity size={18} />}>
+            <div
+              style={{
+                marginBottom: 10,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ fontSize: "0.9rem", color: "rgba(0,0,0,0.66)" }}>
+                Showing up to {snapshot.recentPagination.perPage} rows per page
+              </div>
+              <div style={{ fontWeight: 800, color: "rgba(0,0,0,0.75)" }}>
+                Page {snapshot.recentPagination.page} of{" "}
+                {snapshot.recentPagination.totalPages} (
+                {snapshot.recentPagination.total} total)
+              </div>
+            </div>
             <TableCard>
               <TableScroll>
                 <Table>
@@ -335,6 +444,8 @@ export function AnalyticsDashboard({ snapshot }: { snapshot: Snapshot }) {
                       <Th>Type</Th>
                       <Th>Path</Th>
                       <Th>Store</Th>
+                      <Th>Location</Th>
+                      <Th>User</Th>
                       <Th>Device</Th>
                       <Th>Bot</Th>
                     </tr>
@@ -376,6 +487,31 @@ export function AnalyticsDashboard({ snapshot }: { snapshot: Snapshot }) {
                           <Td title={e.store?.id ?? ""}>
                             {e.store?.name ?? "—"}
                           </Td>
+                          <Td title={e.location?.id ?? ""}>
+                            {e.location?.name ?? "—"}
+                          </Td>
+                          <Td
+                            title={e.member?.id ?? ""}
+                            style={{ minWidth: 180 }}
+                          >
+                            {e.member ? (
+                              <div style={{ display: "grid", gap: 2 }}>
+                                <div style={{ fontWeight: 800 }}>
+                                  {e.member.name}
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: "0.8rem",
+                                    color: "rgba(0,0,0,0.6)",
+                                  }}
+                                >
+                                  {e.member.phone ?? "No phone"}
+                                </div>
+                              </div>
+                            ) : (
+                              "—"
+                            )}
+                          </Td>
                           <Td style={{ whiteSpace: "nowrap" }}>
                             {deviceLabel || "—"}
                           </Td>
@@ -385,13 +521,73 @@ export function AnalyticsDashboard({ snapshot }: { snapshot: Snapshot }) {
                     })}
                     {snapshot.recent.length === 0 ? (
                       <tr>
-                        <Td colSpan={6}>No events in this range.</Td>
+                        <Td colSpan={8}>No events in this range.</Td>
                       </tr>
                     ) : null}
                   </tbody>
                 </Table>
               </TableScroll>
             </TableCard>
+            <div
+              style={{
+                marginTop: 10,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <a
+                href={`/admin/analytics?recentPage=${Math.max(1, snapshot.recentPagination.page - 1)}`}
+                style={{
+                  pointerEvents:
+                    snapshot.recentPagination.page > 1 ? "auto" : "none",
+                  opacity: snapshot.recentPagination.page > 1 ? 1 : 0.45,
+                  minHeight: 36,
+                  padding: "0 12px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: 10,
+                  border: "1px solid rgba(0,0,0,0.12)",
+                  textDecoration: "none",
+                  fontWeight: 900,
+                  color: "inherit",
+                  background: "#fff",
+                }}
+              >
+                Previous
+              </a>
+              <a
+                href={`/admin/analytics?recentPage=${Math.min(snapshot.recentPagination.totalPages, snapshot.recentPagination.page + 1)}`}
+                style={{
+                  pointerEvents:
+                    snapshot.recentPagination.page <
+                    snapshot.recentPagination.totalPages
+                      ? "auto"
+                      : "none",
+                  opacity:
+                    snapshot.recentPagination.page <
+                    snapshot.recentPagination.totalPages
+                      ? 1
+                      : 0.45,
+                  minHeight: 36,
+                  padding: "0 12px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: 10,
+                  border: "1px solid rgba(0,0,0,0.12)",
+                  textDecoration: "none",
+                  fontWeight: 900,
+                  color: "inherit",
+                  background: "#fff",
+                }}
+              >
+                Next
+              </a>
+            </div>
           </PanelCard>
         </div>
       </div>

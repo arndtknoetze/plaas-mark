@@ -107,6 +107,18 @@ export const translations = {
       "PlaasMark — plaasvars produkte van plaaslike verkopers.",
     selectLocationLead: "Kies ’n dorp om te begin inkopies doen.",
     startShopping: "Begin inkopies",
+    locationPromptLead:
+      "Deel jou ligging om outomaties na jou naaste PlaasMark-dorp te gaan.",
+    locationShareCta: "Gebruik my ligging",
+    locationCheckingCta: "Besig om ligging te kontroleer…",
+    locationUnavailableHint:
+      "Jou blaaier ondersteun nie liggingdeling nie. Kies asseblief jou dorp hieronder.",
+    locationPermissionDeniedHint:
+      "Ons kon nie jou ligging gebruik nie. Kies asseblief jou dorp hieronder.",
+    locationLoadFailedHint:
+      "Kon nie liggingdata laai nie. Kies asseblief jou dorp hieronder.",
+    locationNoMatchHint:
+      "Ons kon nie ’n nabygeleë PlaasMark-dorp vind nie. Kies asseblief een hieronder.",
 
     // My Orders page
     ordersFilterPlaceholder: "Filter… (status, nommer, produk, winkel)",
@@ -427,6 +439,18 @@ export const translations = {
     welcomeDescription: "PlaasMark — farm-fresh products from local sellers.",
     selectLocationLead: "Choose a town to start shopping.",
     startShopping: "Start shopping",
+    locationPromptLead:
+      "Share your location to jump straight to your nearest PlaasMark town.",
+    locationShareCta: "Use my location",
+    locationCheckingCta: "Checking location…",
+    locationUnavailableHint:
+      "Your browser does not support geolocation. Please choose your town below.",
+    locationPermissionDeniedHint:
+      "We could not use your location. Please choose your town below.",
+    locationLoadFailedHint:
+      "Could not load location data. Please choose your town below.",
+    locationNoMatchHint:
+      "We could not find a nearby PlaasMark town. Please choose one below.",
 
     // My Orders page
     ordersFilterPlaceholder: "Filter… (status, number, product, store)",

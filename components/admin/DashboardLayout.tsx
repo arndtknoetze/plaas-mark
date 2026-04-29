@@ -263,6 +263,11 @@ const MainInner = styled.div`
     padding-left: 24px;
     padding-right: 24px;
   }
+
+  @media (min-width: 1200px) {
+    max-width: none;
+    margin: 0;
+  }
 `;
 
 function IconGrid() {
