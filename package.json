@@ -17,7 +17,8 @@
     "db:seed": "prisma db seed",
     "db:seed:malmesbury": "node scripts/seed-malmesbury-extra.mjs",
     "db:snapshot": "node scripts/export-seed-snapshot.mjs",
-    "db:setup": "prisma migrate deploy && prisma db seed",
+    "db:setup": "prisma generate && prisma db seed",
+    "db:setup:migrate": "prisma migrate deploy && prisma db seed",
     "postinstall": "prisma generate",
     "prepare": "husky"
   },
