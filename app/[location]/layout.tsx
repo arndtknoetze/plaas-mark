@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
-import ShopPageClient from "@/app/shop/ShopPageClient";
-import { indexableRobots, sitePath } from "@/lib/seo";
+import { sitePath, indexableRobots } from "@/lib/seo";
+
+function titleCaseFromSlug(slug: string) {
+  return slug
+    .split("-")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
 
 export async function generateMetadata({
   params,
@@ -9,29 +16,21 @@ export async function generateMetadata({
   params: Promise<{ location: string }>;
 }): Promise<Metadata> {
   const { location: slug } = await params;
-  const path = `/${slug}/shop`;
 
-  let locName: string | null = null;
+  let row: { name: string } | null = null;
   try {
-    const row = await prisma.location.findUnique({
+    row = await prisma.location.findUnique({
       where: { slug },
       select: { name: true },
     });
-    locName = row?.name ?? null;
   } catch {
-    locName = null;
+    row = null;
   }
 
-  const name =
-    locName ??
-    slug
-      .split("-")
-      .filter(Boolean)
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-      .join(" ");
-
+  const name = row?.name ?? titleCaseFromSlug(slug);
   const title = `Koop plaas vars produkte in ${name} | PlaasMark`;
   const description = `Ontdek vars produkte in ${name}. Koop direk van plaaslike verkopers.`;
+  const path = `/${slug}`;
 
   return {
     title,
@@ -45,17 +44,13 @@ export async function generateMetadata({
       siteName: "PlaasMark",
       type: "website",
     },
-    twitter: {
-      card: "summary_large_image",
-    },
   };
 }
 
-export default async function LocationShopPage({
-  params,
+export default function LocationLayout({
+  children,
 }: {
-  params: Promise<{ location: string }>;
+  children: React.ReactNode;
 }) {
-  const { location } = await params;
-  return <ShopPageClient locationSlug={location} />;
+  return children;
 }

@@ -1,15 +1,9 @@
-import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { LandingLocationDiscovery } from "@/components/LandingLocationDiscovery";
 import { LocationSelector } from "@/components/LocationSelector";
 import { buildLocationEntryUrl } from "@/lib/location-entry-url";
 
 const LOCATIONS_PER_PAGE = 24;
-
-export const metadata: Metadata = {
-  title: "Welkom",
-  description: "PlaasMark — plaasvars produkte van plaaslike verkopers.",
-};
 
 export default async function HomePage({
   searchParams,

@@ -1,7 +1,6 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/db";
-
-const ROOT_DOMAIN = "https://plaas-mark.co.za";
+import { SITE_ORIGIN } from "@/lib/seo";
 
 function buildUrl(origin: string, path: string) {
   const cleanOrigin = origin.replace(/\/+$/, "");
@@ -13,7 +12,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
   const base: MetadataRoute.Sitemap = [
-    { url: buildUrl(ROOT_DOMAIN, "/"), lastModified: now },
+    { url: buildUrl(SITE_ORIGIN, "/"), lastModified: now },
   ];
 
   try {
@@ -34,15 +33,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }),
     ]);
 
-    // Location entry + shop pages (path-based)
     for (const l of locations) {
+      const locModified = l.createdAt ?? now;
       base.push({
-        url: buildUrl(ROOT_DOMAIN, `/${l.slug}`),
-        lastModified: now,
+        url: buildUrl(SITE_ORIGIN, `/${l.slug}`),
+        lastModified: locModified,
       });
       base.push({
-        url: buildUrl(ROOT_DOMAIN, `/${l.slug}/shop`),
-        lastModified: now,
+        url: buildUrl(SITE_ORIGIN, `/${l.slug}/shop`),
+        lastModified: locModified,
       });
     }
 
@@ -52,7 +51,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       if (!locationSlug) continue;
       base.push({
         url: buildUrl(
-          ROOT_DOMAIN,
+          SITE_ORIGIN,
           `/${locationSlug}/store/${s.slug}--${encodeURIComponent(s.id)}`,
         ),
         lastModified: s.updatedAt ?? now,

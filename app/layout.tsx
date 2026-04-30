@@ -6,6 +6,11 @@ import { Shell } from "@/components/Shell";
 import { StyledComponentsRegistry } from "@/lib/styled-registry";
 import { theme } from "@/styles/theme";
 import type { Language } from "@/lib/i18n";
+import {
+  defaultSiteDescription,
+  defaultSiteTitle,
+  indexableRobots,
+} from "@/lib/seo";
 
 function getRequestOriginFromHeaders(h: Headers) {
   const proto = (h.get("x-forwarded-proto") || "https").split(",")[0]?.trim();
@@ -17,24 +22,25 @@ function getRequestOriginFromHeaders(h: Headers) {
 export async function generateMetadata(): Promise<Metadata> {
   const h = await headers();
 
-  const globalTitle = "PlaasMark – Aanlyn Boeremark";
-  const globalDescription =
-    "Koop vars, tuisgemaakte produkte direk van plaaslike verkopers in jou dorp. PlaasMark is 'n eenvoudige aanlyn boeremark vir klein entrepreneurs.";
-
-  const title = globalTitle;
-  const description = globalDescription;
+  const title = defaultSiteTitle;
+  const description = defaultSiteDescription;
 
   const requestOrigin = getRequestOriginFromHeaders(h);
   const canonicalOrigin = requestOrigin || "https://plaas-mark.co.za";
+  const openGraphPageUrl = `${canonicalOrigin.replace(/\/+$/, "")}/`;
 
   return {
     title,
     description,
     metadataBase: new URL(canonicalOrigin),
+    robots: indexableRobots,
+    alternates: {
+      canonical: "/",
+    },
     openGraph: {
       title,
       description,
-      url: canonicalOrigin,
+      url: openGraphPageUrl,
       siteName: "PlaasMark",
       type: "website",
     },
