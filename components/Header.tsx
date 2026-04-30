@@ -13,6 +13,7 @@ import { useLanguage } from "@/lib/useLanguage";
 import {
   clearStoredSession,
   loadStoredSession,
+  sessionContactLabel,
   type StoredSession,
 } from "@/lib/session-storage";
 import type { PublicLocation } from "@/lib/location";
@@ -372,9 +373,7 @@ export function Header({ location }: { location: PublicLocation | null }) {
   useEffect(() => {
     if (!session) return;
     let cancelled = false;
-    fetch(
-      `/api/stores/my?phone=${encodeURIComponent(session.phone)}${locationQuery}`,
-    )
+    fetch(`/api/stores/my${locationQuery.replace(/^&/, "?")}`)
       .then((r) => r.json())
       .then((data: unknown) => {
         if (cancelled) return;
@@ -399,10 +398,9 @@ export function Header({ location }: { location: PublicLocation | null }) {
 
     const loadUnread = async () => {
       try {
-        const res = await fetch(
-          `/api/notifications/unread-count?phone=${encodeURIComponent(session.phone)}`,
-          { cache: "no-store" },
-        );
+        const res = await fetch("/api/notifications/unread-count", {
+          cache: "no-store",
+        });
         const data = (await res.json().catch(() => ({}))) as {
           unread?: unknown;
         };
@@ -517,7 +515,7 @@ export function Header({ location }: { location: PublicLocation | null }) {
                 {session ? (
                   <MenuMeta>
                     <MenuName>{session.name}</MenuName>
-                    <MenuPhone>{session.phone}</MenuPhone>
+                    <MenuPhone>{sessionContactLabel(session)}</MenuPhone>
                   </MenuMeta>
                 ) : null}
 

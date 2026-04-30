@@ -258,7 +258,7 @@ export default function AccountEditStorePage({
       setLoading(true);
       try {
         const res = await fetch(
-          `/api/account/store-dashboard?phone=${encodeURIComponent(session.phone)}&storeId=${encodeURIComponent(storeId)}${locationQuery}`,
+          `/api/account/store-dashboard?storeId=${encodeURIComponent(storeId)}${locationQuery}`,
           { cache: "no-store" },
         );
         const json: unknown = await res.json().catch(() => null);
@@ -328,7 +328,6 @@ export default function AccountEditStorePage({
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                      phone: session.phone,
                       name,
                       brandColor,
                       logoUrl,

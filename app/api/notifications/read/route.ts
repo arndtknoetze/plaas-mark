@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-
-function normalizePhone(value: unknown): string {
-  return typeof value === "string" ? value.trim().replace(/\s+/g, " ") : "";
-}
+import { resolveAccountMember } from "@/lib/resolve-account-member";
 
 export async function PATCH(request: Request) {
   try {
-    let body: { phone?: unknown };
+    let body: Record<string, unknown>;
     try {
-      body = (await request.json()) as { phone?: unknown };
+      body = (await request.json()) as Record<string, unknown>;
     } catch {
       return NextResponse.json(
         { error: "Invalid JSON body." },
@@ -17,16 +14,16 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const phone = normalizePhone(body.phone);
-    if (!phone) {
-      return NextResponse.json({ error: "phone is required" }, { status: 400 });
-    }
-
-    const member = await prisma.member.findUnique({
-      where: { phone },
-      select: { id: true },
+    const member = await resolveAccountMember(request, {
+      phone:
+        typeof body.phone === "string"
+          ? body.phone.trim().replace(/\s+/g, " ")
+          : undefined,
+      email: typeof body.email === "string" ? body.email : undefined,
     });
-    if (!member) return NextResponse.json({ ok: true, updated: 0 });
+    if (!member) {
+      return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+    }
 
     const updated = await prisma.notification.updateMany({
       where: { memberId: member.id, read: false },

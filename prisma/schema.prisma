@@ -15,7 +15,11 @@ enum MemberRole {
 model Member {
   id        String   @id @default(cuid())
   name      String
-  phone     String   @unique
+  /// Normalized lowercase; primary sign-in identifier for new accounts.
+  email     String?  @unique
+  phone     String?  @unique
+  /// bcrypt hash; null for legacy accounts created before passwords.
+  passwordHash String? @db.VarChar(255)
   role      MemberRole @default(MEMBER)
   createdAt DateTime @default(now())
 

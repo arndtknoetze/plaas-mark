@@ -282,7 +282,7 @@ export default function AccountSingleStorePage({
       setLoading(true);
       try {
         const res = await fetch(
-          `/api/account/store-dashboard?phone=${encodeURIComponent(session.phone)}&storeId=${encodeURIComponent(storeId)}${locationQuery}`,
+          `/api/account/store-dashboard?storeId=${encodeURIComponent(storeId)}${locationQuery}`,
           { cache: "no-store" },
         );
         const json: unknown = await res.json().catch(() => null);

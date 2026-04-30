@@ -3,10 +3,14 @@ import { logApiLocationDebug } from "@/lib/api-location-debug-log";
 import { getLocationFromUrlOrHeaders } from "@/lib/location";
 import { prisma } from "@/lib/db";
 import { isPhoneOtpDisabled } from "@/lib/phone-otp";
+import { normalizeAccountEmail } from "@/lib/resolve-account-member";
+import { verifyPassword } from "@/lib/password";
 import { createUserSessionToken, getUserCookieName } from "@/lib/user-session";
 
 type BodyPayload = {
   phone?: unknown;
+  email?: unknown;
+  password?: unknown;
   verificationToken?: unknown;
 };
 
@@ -31,10 +35,14 @@ export async function POST(request: Request) {
   }
 
   const phone = normalizePhone(body.phone);
+  const email = normalizeAccountEmail(
+    typeof body.email === "string" ? body.email : "",
+  );
   const verificationToken =
     typeof body.verificationToken === "string"
       ? body.verificationToken.trim()
       : "";
+  const password = typeof body.password === "string" ? body.password : "";
 
   try {
     let resolvedLocationId: string | undefined;
@@ -49,37 +57,75 @@ export async function POST(request: Request) {
     });
 
     if (isPhoneOtpDisabled()) {
-      if (!phone) {
+      if (!email && !phone) {
         return NextResponse.json(
-          { error: "Phone is required." },
+          { error: "Email or phone is required." },
           { status: 400 },
         );
       }
 
-      const member = await prisma.member.findUnique({
-        where: { phone },
-        select: { id: true, name: true, phone: true },
-      });
+      const member = email
+        ? await prisma.member.findUnique({
+            where: { email },
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              email: true,
+              passwordHash: true,
+            },
+          })
+        : await prisma.member.findUnique({
+            where: { phone },
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              email: true,
+              passwordHash: true,
+            },
+          });
       if (!member) {
         return NextResponse.json(
           {
             error:
-              "No account found for this phone number. Please register first.",
+              "No account found. Please register first or check your email.",
           },
           { status: 403 },
         );
       }
 
+      if (member.passwordHash) {
+        if (!password) {
+          return NextResponse.json(
+            { error: "Password is required." },
+            { status: 400 },
+          );
+        }
+        const valid = await verifyPassword(password, member.passwordHash);
+        if (!valid) {
+          return NextResponse.json(
+            { error: "Invalid email or password." },
+            { status: 403 },
+          );
+        }
+      }
+
       const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30; // 30d
       const token = createUserSessionToken({
         memberId: member.id,
-        phone: member.phone,
+        email: member.email ?? "",
+        phone: member.phone ?? "",
         exp,
       });
 
       const res = NextResponse.json({
         ok: true,
-        session: { name: member.name, phone: member.phone },
+        session: {
+          name: member.name,
+          email: member.email ?? "",
+          phone: member.phone ?? "",
+        },
       });
       res.cookies.set(getUserCookieName(), token, {
         httpOnly: true,
@@ -114,10 +160,15 @@ export async function POST(request: Request) {
 
       const member = await tx.member.findUnique({
         where: { phone },
-        select: { id: true, name: true, phone: true },
+        select: { id: true, name: true, phone: true, email: true },
       });
       if (member) {
-        return { memberId: member.id, name: member.name, phone: member.phone };
+        return {
+          memberId: member.id,
+          name: member.name,
+          phone: member.phone,
+          email: member.email,
+        };
       }
 
       throw new ForbiddenLoginError(
@@ -128,13 +179,18 @@ export async function POST(request: Request) {
     const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30; // 30d
     const token = createUserSessionToken({
       memberId: result.memberId,
-      phone: result.phone,
+      email: result.email ?? "",
+      phone: result.phone ?? "",
       exp,
     });
 
     const res = NextResponse.json({
       ok: true,
-      session: { name: result.name, phone: result.phone },
+      session: {
+        name: result.name,
+        email: result.email ?? "",
+        phone: result.phone ?? "",
+      },
     });
     res.cookies.set(getUserCookieName(), token, {
       httpOnly: true,

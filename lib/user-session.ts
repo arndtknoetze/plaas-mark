@@ -6,6 +6,7 @@ const COOKIE_NAME = "plaasmark-user";
 
 type UserSessionPayload = {
   memberId: string;
+  email: string;
   phone: string;
   exp: number; // unix seconds
 };
@@ -74,14 +75,20 @@ export function verifyUserSessionToken(
       !payload ||
       typeof payload !== "object" ||
       typeof payload.memberId !== "string" ||
-      typeof payload.phone !== "string" ||
       typeof payload.exp !== "number"
     ) {
       return null;
     }
+    const email = typeof payload.email === "string" ? payload.email : "";
+    const phone = typeof payload.phone === "string" ? payload.phone : "";
     const now = Math.floor(Date.now() / 1000);
     if (payload.exp <= now) return null;
-    return payload as UserSessionPayload;
+    return {
+      memberId: payload.memberId,
+      email,
+      phone,
+      exp: payload.exp,
+    };
   } catch {
     return null;
   }

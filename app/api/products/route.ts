@@ -3,6 +3,7 @@ import { logApiLocationDebug } from "@/lib/api-location-debug-log";
 import { getLocationFromUrlOrHeaders } from "@/lib/location";
 import { findProductsForLocationCatalogue } from "@/lib/products-scope";
 import { prisma } from "@/lib/db";
+import { resolveAccountMember } from "@/lib/resolve-account-member";
 
 function toStringArray(value: unknown): string[] | undefined {
   if (!Array.isArray(value)) return undefined;
@@ -56,6 +57,7 @@ export async function GET(request: Request) {
 
 type CreateBody = {
   phone?: unknown;
+  email?: unknown;
   storeId?: unknown;
   title?: unknown;
   description?: unknown;
@@ -94,6 +96,7 @@ export async function POST(request: Request) {
   }
 
   const phone = normalizePhone(body.phone);
+  const emailRaw = typeof body.email === "string" ? body.email : undefined;
   const storeId = typeof body.storeId === "string" ? body.storeId.trim() : "";
   const title = typeof body.title === "string" ? body.title.trim() : "";
   const description = normalizeOptionalString(body.description) ?? undefined;
@@ -108,9 +111,9 @@ export async function POST(request: Request) {
   const images = normalizeStringArray(body.images) ?? (image ? [image] : null);
   const tags = normalizeStringArray(body.tags) ?? null;
 
-  if (!phone || !storeId || !title || !Number.isFinite(price) || price <= 0) {
+  if (!storeId || !title || !Number.isFinite(price) || price <= 0) {
     return NextResponse.json(
-      { error: "phone, storeId, title, and a valid price are required." },
+      { error: "storeId, title, and a valid price are required." },
       { status: 400 },
     );
   }
@@ -118,17 +121,17 @@ export async function POST(request: Request) {
   try {
     const location = await getLocationFromUrlOrHeaders(request);
 
-    const result = await prisma.$transaction(async (tx) => {
-      const member = await tx.member.findUnique({ where: { phone } });
-      if (!member) {
-        return {
-          status: 403 as const,
-          payload: { error: "Member not found." },
-        };
-      }
+    const account = await resolveAccountMember(request, {
+      phone: phone || undefined,
+      email: emailRaw,
+    });
+    if (!account) {
+      return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+    }
 
+    const result = await prisma.$transaction(async (tx) => {
       const store = await tx.store.findUnique({ where: { id: storeId } });
-      if (!store || store.memberId !== member.id) {
+      if (!store || store.memberId !== account.id) {
         return { status: 403 as const, payload: { error: "Forbidden." } };
       }
 

@@ -16,7 +16,8 @@ import {
 export type AdminMemberRow = {
   id: string;
   name: string;
-  phone: string;
+  email: string | null;
+  phone: string | null;
   role: "ADMIN" | "MEMBER";
   createdAt: string;
   counts: { stores: number; orders: number };
@@ -122,7 +123,8 @@ export function AdminMembersClient({ initial }: { initial: AdminMemberRow[] }) {
       if (!query) return true;
       return (
         m.name.toLowerCase().includes(query) ||
-        m.phone.toLowerCase().includes(query) ||
+        (m.email?.toLowerCase().includes(query) ?? false) ||
+        (m.phone?.toLowerCase().includes(query) ?? false) ||
         m.id.toLowerCase().includes(query)
       );
     });
@@ -135,7 +137,8 @@ export function AdminMembersClient({ initial }: { initial: AdminMemberRow[] }) {
         members: Array<{
           id: string;
           name: string;
-          phone: string;
+          email: string | null;
+          phone: string | null;
           role: "ADMIN" | "MEMBER";
           createdAt: string;
           _count: { stores: number; orders: number };
@@ -145,6 +148,7 @@ export function AdminMembersClient({ initial }: { initial: AdminMemberRow[] }) {
         data.members.map((m) => ({
           id: m.id,
           name: m.name,
+          email: m.email,
           phone: m.phone,
           role: m.role,
           createdAt: m.createdAt,
@@ -205,7 +209,7 @@ export function AdminMembersClient({ initial }: { initial: AdminMemberRow[] }) {
         <Search
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search name / phone / id…"
+          placeholder="Search name / email / phone / id…"
           aria-label="Search members"
         />
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
@@ -251,6 +255,7 @@ export function AdminMembersClient({ initial }: { initial: AdminMemberRow[] }) {
               <thead>
                 <tr>
                   <Th>Name</Th>
+                  <Th>Email</Th>
                   <Th>Phone</Th>
                   <Th>Role</Th>
                   <Th>Stores</Th>
@@ -277,7 +282,8 @@ export function AdminMembersClient({ initial }: { initial: AdminMemberRow[] }) {
                           {m.id}
                         </div>
                       </Td>
-                      <Td>{m.phone}</Td>
+                      <Td>{m.email ?? "—"}</Td>
+                      <Td>{m.phone ?? "—"}</Td>
                       <Td>
                         <div
                           style={{

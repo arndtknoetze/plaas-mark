@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getLocationFromRequest } from "@/lib/location";
 import { isOrderStatus } from "@/lib/order-status";
+import { resolveAccountMember } from "@/lib/resolve-account-member";
 
 function normalizePhone(value: unknown): string {
   return typeof value === "string" ? value.trim().replace(/\s+/g, " ") : "";
@@ -26,9 +27,13 @@ export async function PATCH(request: Request, context: RouteContext) {
       );
     }
 
-    let body: { status?: unknown; phone?: unknown };
+    let body: { status?: unknown; phone?: unknown; email?: unknown };
     try {
-      body = (await request.json()) as { status?: unknown; phone?: unknown };
+      body = (await request.json()) as {
+        status?: unknown;
+        phone?: unknown;
+        email?: unknown;
+      };
     } catch {
       return NextResponse.json(
         { error: "Invalid JSON body." },
@@ -37,12 +42,15 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     const statusRaw = typeof body.status === "string" ? body.status.trim() : "";
-    const phone = normalizePhone(body.phone);
 
-    if (!phone) {
+    const account = await resolveAccountMember(request, {
+      phone: normalizePhone(body.phone) || undefined,
+      email: typeof body.email === "string" ? body.email : undefined,
+    });
+    if (!account) {
       return NextResponse.json(
-        { error: "phone is required (seller session)." },
-        { status: 400 },
+        { error: "Sign in required (seller session)." },
+        { status: 401 },
       );
     }
 
@@ -66,7 +74,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     const member = await prisma.member.findUnique({
-      where: { phone },
+      where: { id: account.id },
       select: {
         stores: {
           where: { locationId: location.id },

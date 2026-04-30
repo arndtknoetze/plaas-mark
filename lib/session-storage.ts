@@ -2,7 +2,8 @@ const STORAGE_KEY = "plaasmark-session";
 
 export type StoredSession = {
   name: string;
-  phone: string;
+  email?: string;
+  phone?: string;
 };
 
 export function loadStoredSession(): StoredSession | null {
@@ -13,13 +14,21 @@ export function loadStoredSession(): StoredSession | null {
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return null;
     const o = parsed as Record<string, unknown>;
-    if (typeof o.name !== "string" || typeof o.phone !== "string") {
+    if (typeof o.name !== "string") {
       return null;
     }
     const name = o.name.trim();
-    const phone = o.phone.trim();
-    if (!name || !phone) return null;
-    return { name, phone };
+    if (!name) return null;
+    const email =
+      typeof o.email === "string" ? o.email.trim().toLowerCase() : "";
+    const phone = typeof o.phone === "string" ? o.phone.trim() : undefined;
+    if (email) {
+      return { name, email, ...(phone ? { phone } : {}) };
+    }
+    if (phone) {
+      return { name, phone };
+    }
+    return null;
   } catch {
     return null;
   }
@@ -28,11 +37,15 @@ export function loadStoredSession(): StoredSession | null {
 export function saveStoredSession(session: StoredSession): void {
   if (typeof window === "undefined") return;
   try {
+    const email = session.email?.trim().toLowerCase() ?? "";
+    const phone = session.phone?.trim();
+    if (!email && !phone) return;
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
         name: session.name.trim(),
-        phone: session.phone.trim(),
+        ...(email ? { email } : {}),
+        ...(phone ? { phone } : {}),
       }),
     );
     window.dispatchEvent(new Event("plaasmark-session"));
@@ -49,4 +62,11 @@ export function clearStoredSession(): void {
   } catch {
     /* ignore */
   }
+}
+
+export function sessionContactLabel(s: StoredSession | null): string {
+  if (!s) return "";
+  const e = s.email?.trim();
+  const p = s.phone?.trim();
+  return (e || p || "").trim();
 }

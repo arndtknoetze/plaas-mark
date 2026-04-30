@@ -1,27 +1,19 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getLocationFromUrlOrHeaders } from "@/lib/location";
-
-function normalizePhoneParam(value: string | null): string {
-  return value?.trim().replace(/\s+/g, " ") ?? "";
-}
+import { resolveAccountMember } from "@/lib/resolve-account-member";
 
 export async function GET(request: Request) {
   try {
-    const phone = normalizePhoneParam(
-      new URL(request.url).searchParams.get("phone"),
-    );
-    if (!phone) {
-      return NextResponse.json(
-        { error: 'Query parameter "phone" is required.' },
-        { status: 400 },
-      );
+    const account = await resolveAccountMember(request);
+    if (!account) {
+      return NextResponse.json({ error: "Sign in required." }, { status: 401 });
     }
 
     const location = await getLocationFromUrlOrHeaders(request);
 
     const member = await prisma.member.findUnique({
-      where: { phone },
+      where: { id: account.id },
       select: {
         id: true,
         stores: {

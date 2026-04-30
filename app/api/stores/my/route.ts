@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { logApiLocationDebug } from "@/lib/api-location-debug-log";
 import { prisma } from "@/lib/db";
 import { getLocationFromUrlOrHeaders } from "@/lib/location";
+import {
+  normalizeAccountPhone,
+  resolveAccountMember,
+} from "@/lib/resolve-account-member";
 import { slugify } from "@/lib/slug";
 
 function normalizePhone(input: unknown): string {
@@ -15,17 +19,23 @@ export async function GET(request: Request) {
   try {
     const location = await getLocationFromUrlOrHeaders(request);
 
-    const phone =
-      new URL(request.url).searchParams
-        .get("phone")
-        ?.trim()
-        .replace(/\s+/g, " ") ?? "";
-    if (!phone) {
-      return NextResponse.json({ error: "phone is required" }, { status: 400 });
+    const url = new URL(request.url);
+    const phoneQ = normalizeAccountPhone(url.searchParams.get("phone"));
+    const emailQ = (url.searchParams.get("email") ?? "").trim().toLowerCase();
+
+    const member = await resolveAccountMember(request, {
+      phone: phoneQ || undefined,
+      email: emailQ || undefined,
+    });
+    if (!member) {
+      return NextResponse.json(
+        { error: "Sign in or pass email/phone." },
+        { status: 401 },
+      );
     }
 
-    const member = await prisma.member.findUnique({
-      where: { phone },
+    const full = await prisma.member.findUnique({
+      where: { id: member.id },
       include: {
         stores: {
           where: { locationId: location.id },
@@ -34,7 +44,7 @@ export async function GET(request: Request) {
       },
     });
 
-    if (!member) {
+    if (!full) {
       await logApiLocationDebug("GET /api/stores/my", {
         resolvedLocationId: location.id,
         memberStoreLocationIds: [] as string[],
@@ -44,12 +54,17 @@ export async function GET(request: Request) {
 
     await logApiLocationDebug("GET /api/stores/my", {
       resolvedLocationId: location.id,
-      memberStoreLocationIds: member.stores.map((s) => s.locationId),
+      memberStoreLocationIds: full.stores.map((s) => s.locationId),
     });
 
     return NextResponse.json({
-      member: { id: member.id, name: member.name, phone: member.phone },
-      stores: member.stores.map((s) => ({
+      member: {
+        id: full.id,
+        name: full.name,
+        email: full.email,
+        phone: full.phone,
+      },
+      stores: full.stores.map((s) => ({
         id: s.id,
         locationId: s.locationId,
         name: s.name,
@@ -75,9 +90,19 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  let body: { phone?: unknown; name?: unknown; locationId?: unknown };
+  let body: {
+    phone?: unknown;
+    email?: unknown;
+    name?: unknown;
+    locationId?: unknown;
+  };
   try {
-    body = (await request.json()) as { phone?: unknown; name?: unknown };
+    body = (await request.json()) as {
+      phone?: unknown;
+      email?: unknown;
+      name?: unknown;
+      locationId?: unknown;
+    };
   } catch {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
@@ -97,21 +122,23 @@ export async function POST(request: Request) {
     }
   }
 
-  const phone = normalizePhone(body.phone);
   const name = typeof body.name === "string" ? body.name.trim() : "";
   const requestedLocationId =
     typeof body.locationId === "string" ? body.locationId.trim() : "";
-  if (!phone || !name) {
-    return NextResponse.json(
-      { error: "phone and name are required" },
-      { status: 400 },
-    );
+  if (!name) {
+    return NextResponse.json({ error: "name is required" }, { status: 400 });
   }
 
   try {
-    const member = await prisma.member.findUnique({ where: { phone } });
+    const member = await resolveAccountMember(request, {
+      phone: normalizePhone(body.phone) || undefined,
+      email: typeof body.email === "string" ? body.email : undefined,
+    });
     if (!member) {
-      return NextResponse.json({ error: "Member not found." }, { status: 404 });
+      return NextResponse.json(
+        { error: "Sign in or pass email/phone." },
+        { status: 401 },
+      );
     }
 
     const location = requestedLocationId

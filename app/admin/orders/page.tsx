@@ -68,7 +68,7 @@ export default async function AdminOrdersPage() {
     orderBy: { createdAt: "desc" },
     take: 50,
     include: {
-      member: { select: { name: true, phone: true } },
+      member: { select: { name: true, phone: true, email: true } },
       items: { orderBy: { id: "asc" } },
     },
   });
@@ -92,10 +92,10 @@ export default async function AdminOrdersPage() {
               (sum, line) => sum + Number(line.price) * line.quantity,
               0,
             );
-            const whatsappHref = buildWhatsAppUrl(
-              order.member.phone,
-              DEFAULT_WHATSAPP_ORDER_MESSAGE,
-            );
+            const contactPhone = order.member.phone?.trim() ?? "";
+            const whatsappHref = contactPhone
+              ? buildWhatsAppUrl(contactPhone, DEFAULT_WHATSAPP_ORDER_MESSAGE)
+              : null;
             return (
               <li key={order.id}>
                 <Card>
@@ -120,7 +120,7 @@ export default async function AdminOrdersPage() {
                           fontWeight: 700,
                         }}
                       >
-                        {order.member.phone}
+                        {order.member.email ?? order.member.phone ?? "—"}
                       </div>
                       {whatsappHref ? (
                         <WhatsAppBtn

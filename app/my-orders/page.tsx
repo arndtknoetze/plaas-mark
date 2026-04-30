@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
 import { useLanguage } from "@/lib/useLanguage";
-import { loadStoredCustomer } from "@/lib/customer-storage";
 import { loadStoredSession } from "@/lib/session-storage";
 import { isOrderStatus } from "@/lib/order-status";
 import { useResolvedLocationSlug } from "@/lib/useResolvedLocationSlug";
@@ -88,58 +87,6 @@ const FilterInput = styled.input`
   &:disabled {
     opacity: 0.55;
     cursor: not-allowed;
-  }
-`;
-
-const PhoneRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: stretch;
-`;
-
-const PhoneField = styled.input`
-  flex: 1 1 160px;
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid #d8d8d4;
-  border-radius: 10px;
-  font-size: 1rem;
-  color: ${({ theme }) => theme.colors.textDark};
-  background: #ffffff;
-  box-sizing: border-box;
-
-  &:focus {
-    outline: none;
-    border-color: ${({ theme }) => theme.colors.primary};
-    box-shadow: 0 0 0 2px rgba(46, 94, 62, 0.15);
-  }
-`;
-
-const LaaiBtn = styled.button`
-  min-height: 44px;
-  padding: 0 16px;
-  border: none;
-  border-radius: 10px;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: #ffffff;
-  background: ${({ theme }) => theme.colors.primary};
-  cursor: pointer;
-  white-space: nowrap;
-
-  &:hover:not(:disabled) {
-    background: ${({ theme }) => theme.colors.secondary};
-  }
-
-  &:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
-
-  &:focus-visible {
-    outline: 2px solid ${({ theme }) => theme.colors.accent};
-    outline-offset: 2px;
   }
 `;
 
@@ -336,15 +283,6 @@ function parseOrdersResponse(data: unknown): OrderRow[] | null {
   return orders;
 }
 
-function getSavedPhoneForOrders(): string {
-  if (typeof window === "undefined") return "";
-  const session = loadStoredSession();
-  if (session?.phone?.trim()) return session.phone.trim();
-  const customer = loadStoredCustomer();
-  if (customer?.phone?.trim()) return customer.phone.trim();
-  return "";
-}
-
 function matchesFilter(order: OrderRow, q: string): boolean {
   const needle = q.trim().toLowerCase();
   if (!needle) return true;
@@ -364,7 +302,6 @@ export default function MyOrdersPage() {
   const location = useResolvedLocationSlug();
   const shopHref = location ? `/${location}/shop` : "/";
   const [clientReady, setClientReady] = useState(false);
-  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [orders, setOrders] = useState<OrderRow[] | null>(null);
@@ -384,68 +321,48 @@ export default function MyOrdersPage() {
     }
   }, [clientReady, router]);
 
-  const fetchOrdersForPhone = useCallback(
-    async (rawPhone: string) => {
-      const q = rawPhone.trim().replace(/\s+/g, " ");
-      if (!q) {
-        setError(t("errEnterPhoneForOrders"));
-        setOrders(null);
-        return;
+  const fetchOrders = useCallback(async () => {
+    setError(null);
+    setLoading(true);
+    setOrders(null);
+    try {
+      const res = await fetch("/api/orders");
+      const data: unknown = await res.json().catch(() => null);
+      if (!res.ok) {
+        const msg =
+          data &&
+          typeof data === "object" &&
+          "error" in data &&
+          typeof (data as { error: unknown }).error === "string"
+            ? (data as { error: string }).error
+            : t("errCouldNotLoadOrders");
+        throw new Error(msg);
       }
-      setError(null);
-      setLoading(true);
-      setOrders(null);
-      try {
-        const res = await fetch(`/api/orders?phone=${encodeURIComponent(q)}`);
-        const data: unknown = await res.json().catch(() => null);
-        if (!res.ok) {
-          const msg =
-            data &&
-            typeof data === "object" &&
-            "error" in data &&
-            typeof (data as { error: unknown }).error === "string"
-              ? (data as { error: string }).error
-              : t("errCouldNotLoadOrders");
-          throw new Error(msg);
-        }
-        const parsed = parseOrdersResponse(data);
-        if (!parsed) throw new Error(t("errInvalidOrdersResponse"));
-        setOrders(parsed);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : t("errGeneric"));
-      } finally {
-        setLoading(false);
-      }
-    },
-    [t],
-  );
+      const parsed = parseOrdersResponse(data);
+      if (!parsed) throw new Error(t("errInvalidOrdersResponse"));
+      setOrders(parsed);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("errGeneric"));
+    } finally {
+      setLoading(false);
+    }
+  }, [t]);
 
   useEffect(() => {
-    const saved = getSavedPhoneForOrders();
-    if (!saved) return;
-    /* eslint-disable react-hooks/set-state-in-effect -- initialize from localStorage after mount */
-    setPhone(saved);
+    /* eslint-disable react-hooks/set-state-in-effect -- fetch orders after session/client ready */
+    if (!clientReady || !loadStoredSession()) return;
+    void fetchOrders();
     /* eslint-enable react-hooks/set-state-in-effect */
-    void fetchOrdersForPhone(saved);
-  }, [fetchOrdersForPhone]);
+  }, [clientReady, fetchOrders]);
 
   const filteredOrders = useMemo(() => {
     if (!orders) return [];
     return orders.filter((o) => matchesFilter(o, filter));
   }, [orders, filter]);
 
-  const savedPhone = clientReady ? getSavedPhoneForOrders() : "";
-  const needsPhoneFirst =
-    clientReady && orders === null && !loading && !savedPhone;
-
   if (clientReady && !loadStoredSession()) {
     return null;
   }
-
-  const handlePhoneLoad = (e: React.FormEvent) => {
-    e.preventDefault();
-    void fetchOrdersForPhone(phone);
-  };
 
   return (
     <>
@@ -462,24 +379,6 @@ export default function MyOrdersPage() {
           disabled={!clientReady || orders === null || loading}
           aria-label={t("ordersFilterAria")}
         />
-
-        {needsPhoneFirst ? (
-          <form onSubmit={handlePhoneLoad}>
-            <PhoneRow>
-              <PhoneField
-                type="tel"
-                autoComplete="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder={t("ordersPhonePlaceholder")}
-                aria-label={t("ordersPhoneAria")}
-              />
-              <LaaiBtn type="submit" disabled={loading}>
-                {loading ? t("loading") : t("load")}
-              </LaaiBtn>
-            </PhoneRow>
-          </form>
-        ) : null}
       </TopBar>
 
       {loading && orders === null ? (

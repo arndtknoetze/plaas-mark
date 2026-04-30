@@ -270,7 +270,7 @@ export function ActivityPageClient() {
   const toast = useToast();
   const location = useResolvedLocationSlug();
   const shopHref = location ? `/${location}/shop` : "/";
-  const [sessionPhone, setSessionPhone] = useState<string | null>(null);
+  const [signedIn, setSignedIn] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -280,20 +280,17 @@ export function ActivityPageClient() {
   useEffect(() => {
     const s = loadStoredSession();
     /* eslint-disable react-hooks/set-state-in-effect -- hydrate localStorage-backed session */
-    setSessionPhone(s?.phone ?? null);
+    setSignedIn(Boolean(s?.email?.trim() || s?.phone?.trim()));
     setHydrated(true);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   const load = useCallback(async () => {
-    if (!sessionPhone) return;
+    if (!signedIn) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(
-        `/api/activity?phone=${encodeURIComponent(sessionPhone)}`,
-        { cache: "no-store" },
-      );
+      const res = await fetch("/api/activity", { cache: "no-store" });
       const data = (await res.json().catch(() => ({}))) as {
         activity?: ActivityItem[];
         error?: string;
@@ -317,23 +314,23 @@ export function ActivityPageClient() {
       setLoading(false);
       if (manualReload) setManualReload(false);
     }
-  }, [language, manualReload, sessionPhone, t, toast]);
+  }, [language, manualReload, signedIn, t, toast]);
 
   useEffect(() => {
-    if (!sessionPhone) return;
+    if (!signedIn) return;
     /* eslint-disable react-hooks/set-state-in-effect -- load() manages state internally */
     void load();
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [sessionPhone, load]);
+  }, [signedIn, load]);
 
   useEffect(() => {
-    if (!sessionPhone) return;
+    if (!signedIn) return;
     fetch("/api/notifications/read", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone: sessionPhone }),
+      body: JSON.stringify({}),
     }).catch(() => {});
-  }, [sessionPhone]);
+  }, [signedIn]);
 
   const grouped = useMemo(() => groupActivity(activity), [activity]);
 
@@ -355,7 +352,7 @@ export function ActivityPageClient() {
     );
   }
 
-  if (!sessionPhone) {
+  if (!signedIn) {
     return (
       <Container>
         <PageWrap>

@@ -315,12 +315,12 @@ export default function AccountStoreProductsPage({
   const [savingId, setSavingId] = useState<string | null>(null);
   const [rowError, setRowError] = useState<string | null>(null);
 
-  const load = async (phone: string) => {
+  const load = async () => {
     setError(null);
     setLoading(true);
     try {
       const res = await fetch(
-        `/api/products/my?phone=${encodeURIComponent(phone)}&storeId=${encodeURIComponent(storeId)}${locationQuery}`,
+        `/api/products/my?storeId=${encodeURIComponent(storeId)}${locationQuery}`,
         { cache: "no-store" },
       );
       const data: unknown = await res.json().catch(() => null);
@@ -355,9 +355,9 @@ export default function AccountStoreProductsPage({
   useEffect(() => {
     if (!bootstrapped || !session) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- effect coordinates async fetch
-    void load(session.phone);
+    void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when session/store changes
-  }, [bootstrapped, session?.phone, storeId, locationQuery]);
+  }, [bootstrapped, session, storeId, locationQuery]);
 
   if (!bootstrapped || !session) {
     return (
@@ -424,7 +424,6 @@ export default function AccountStoreProductsPage({
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
-                    phone: session.phone,
                     storeId,
                     title: newTitle.trim(),
                     price: p,
@@ -447,7 +446,7 @@ export default function AccountStoreProductsPage({
                 setNewPrice("");
                 setNewImage("");
                 setCreateSuccess(t("productCreated"));
-                await load(session.phone);
+                await load();
               } catch (e2) {
                 setCreateError(
                   e2 instanceof Error ? e2.message : t("errUnknown"),
@@ -614,9 +613,7 @@ export default function AccountStoreProductsPage({
                                   headers: {
                                     "Content-Type": "application/json",
                                   },
-                                  body: JSON.stringify({
-                                    phone: session.phone,
-                                  }),
+                                  body: JSON.stringify({}),
                                 },
                               );
                               const data: unknown = await res
@@ -633,7 +630,7 @@ export default function AccountStoreProductsPage({
                                     : t("errUnknown");
                                 throw new Error(msg);
                               }
-                              await load(session.phone);
+                              await load();
                             } catch (err) {
                               setRowError(
                                 err instanceof Error
@@ -716,7 +713,6 @@ export default function AccountStoreProductsPage({
                                         "Content-Type": "application/json",
                                       },
                                       body: JSON.stringify({
-                                        phone: session.phone,
                                         title: editTitle.trim(),
                                         price,
                                         unit: editUnit.trim()
@@ -743,7 +739,7 @@ export default function AccountStoreProductsPage({
                                     throw new Error(msg);
                                   }
                                   setEditingId(null);
-                                  await load(session.phone);
+                                  await load();
                                 } catch (err) {
                                   setRowError(
                                     err instanceof Error

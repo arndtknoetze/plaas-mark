@@ -2,12 +2,8 @@ import { NextResponse } from "next/server";
 import { logApiLocationDebug } from "@/lib/api-location-debug-log";
 import { prisma } from "@/lib/db";
 import { getLocationFromUrlOrHeaders } from "@/lib/location";
+import { resolveAccountMember } from "@/lib/resolve-account-member";
 import { slugify } from "@/lib/slug";
-
-function normalizePhone(input: unknown): string {
-  if (typeof input !== "string") return "";
-  return input.trim().replace(/\s+/g, " ");
-}
 
 export async function GET(
   request: Request,
@@ -72,18 +68,21 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const phone = normalizePhone(body.phone);
-  if (!phone) {
-    return NextResponse.json({ error: "phone is required" }, { status: 400 });
-  }
-
   const { id } = await params;
   const store = await prisma.store.findUnique({
     where: { id },
-    include: { member: { select: { phone: true } } },
+    include: { member: { select: { id: true } } },
   });
   if (!store) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (!store.member || store.member.phone !== phone) {
+
+  const account = await resolveAccountMember(request, {
+    phone:
+      typeof body.phone === "string"
+        ? body.phone.trim().replace(/\s+/g, " ")
+        : undefined,
+    email: typeof body.email === "string" ? body.email : undefined,
+  });
+  if (!account || account.id !== store.memberId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

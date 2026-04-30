@@ -184,7 +184,7 @@ export default function AccountStoresPage() {
       setLoading(true);
       try {
         const res = await fetch(
-          `/api/account/stores-overview?phone=${encodeURIComponent(session.phone)}${locationQuery}`,
+          `/api/account/stores-overview${locationQuery.replace(/^&/, "?")}`,
           { cache: "no-store" },
         );
         const data: unknown = await res.json().catch(() => null);

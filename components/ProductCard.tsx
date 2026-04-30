@@ -259,7 +259,6 @@ async function loadOwnedStoreIds(locationSlug?: string): Promise<Set<string>> {
   if (inflight) return inflight;
 
   const url = new URL("/api/stores/my", window.location.origin);
-  url.searchParams.set("phone", session.phone);
   if (key) url.searchParams.set("location", key);
 
   const promise = fetch(url.toString())

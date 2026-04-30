@@ -162,6 +162,7 @@ export function LoginForm() {
   const [sending, setSending] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [loggingIn, setLoggingIn] = useState(false);
+  const [loginPassword, setLoginPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [devOtpHint, setDevOtpHint] = useState<string | null>(null);
 
@@ -194,10 +195,13 @@ export function LoginForm() {
     }
     setLoggingIn(true);
     try {
+      const payload = phoneNorm.includes("@")
+        ? { email: phoneNorm.toLowerCase(), password: loginPassword }
+        : { phone: phoneNorm, password: loginPassword };
       const res = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phoneNorm }),
+        body: JSON.stringify(payload),
       });
       const data: unknown = await res.json().catch(() => null);
       if (!res.ok) {
@@ -216,9 +220,15 @@ export function LoginForm() {
         const s = (data as { session?: unknown }).session;
         if (!s || typeof s !== "object") return null;
         const o = s as Record<string, unknown>;
-        if (typeof o.name !== "string" || typeof o.phone !== "string")
-          return null;
-        return { name: o.name, phone: o.phone } as const;
+        if (typeof o.name !== "string") return null;
+        const em = typeof o.email === "string" ? o.email.trim() : "";
+        const ph = typeof o.phone === "string" ? o.phone.trim() : "";
+        if (!em && !ph) return null;
+        return {
+          name: o.name.trim(),
+          ...(em ? { email: em } : {}),
+          ...(ph ? { phone: ph } : {}),
+        } as const;
       })();
       if (!session) throw new Error(t("errInvalidServerResponse"));
 
@@ -338,9 +348,15 @@ export function LoginForm() {
         const s = (data as { session?: unknown }).session;
         if (!s || typeof s !== "object") return null;
         const o = s as Record<string, unknown>;
-        if (typeof o.name !== "string" || typeof o.phone !== "string")
-          return null;
-        return { name: o.name, phone: o.phone } as const;
+        if (typeof o.name !== "string") return null;
+        const em = typeof o.email === "string" ? o.email.trim() : "";
+        const ph = typeof o.phone === "string" ? o.phone.trim() : "";
+        if (!em && !ph) return null;
+        return {
+          name: o.name.trim(),
+          ...(em ? { email: em } : {}),
+          ...(ph ? { phone: ph } : {}),
+        } as const;
       })();
       if (!session) throw new Error(t("errInvalidServerResponse"));
 
@@ -374,11 +390,18 @@ export function LoginForm() {
           {error ? <ErrorMsg role="alert">{error}</ErrorMsg> : null}
 
           <Field>
-            <Label htmlFor="login-phone">{t("labelPhone")}</Label>
+            <Label htmlFor="login-phone">
+              {disablePhoneOtp
+                ? language === "af"
+                  ? "E-pos of foon"
+                  : "Email or phone"
+                : t("labelPhone")}
+            </Label>
             <Input
               id="login-phone"
-              type="tel"
-              autoComplete="tel"
+              type={disablePhoneOtp ? "text" : "tel"}
+              autoComplete={disablePhoneOtp ? "username" : "tel"}
+              inputMode={disablePhoneOtp ? undefined : "tel"}
               value={phone}
               onChange={(e) => {
                 setPhone(e.target.value);
@@ -386,7 +409,13 @@ export function LoginForm() {
                 setOtpCode("");
                 setDevOtpHint(null);
               }}
-              placeholder={t("placeholderPhone")}
+              placeholder={
+                disablePhoneOtp
+                  ? language === "af"
+                    ? "jy@voorbeeld.com of 082 …"
+                    : "you@example.com or phone"
+                  : t("placeholderPhone")
+              }
               required
             />
             {!disablePhoneOtp ? (
@@ -410,9 +439,28 @@ export function LoginForm() {
                 )}
               </>
             ) : (
-              <Hint>{t("loginFillNumberHint")}</Hint>
+              <Hint>
+                {language === "af"
+                  ? "Gebruik die wagwoord wat jy by registrasie gestel het."
+                  : "Use the password you set when you registered."}
+              </Hint>
             )}
           </Field>
+
+          {disablePhoneOtp ? (
+            <Field>
+              <Label htmlFor="login-password">
+                {language === "af" ? "Wagwoord" : "Password"}
+              </Label>
+              <Input
+                id="login-password"
+                type="password"
+                autoComplete="current-password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+              />
+            </Field>
+          ) : null}
 
           {!disablePhoneOtp && codeSent ? (
             <Field>

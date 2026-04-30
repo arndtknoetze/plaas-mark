@@ -384,21 +384,19 @@ function parseResponse(data: unknown): StoreOrderRow[] | null {
 export default function AccountStoreOrdersPage() {
   const { t } = useLanguage();
   const [bootstrapped, setBootstrapped] = useState(false);
-  const [sessionPhone, setSessionPhone] = useState<string | null>(null);
+  const [signedIn, setSignedIn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [orders, setOrders] = useState<StoreOrderRow[] | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  const fetchOrders = useCallback(async (phone: string) => {
+  const fetchOrders = useCallback(async () => {
     setError(null);
     setLoading(true);
     setOrders(null);
     try {
-      const res = await fetch(
-        `/api/account/store-orders?phone=${encodeURIComponent(phone)}`,
-      );
+      const res = await fetch("/api/account/store-orders");
       const data: unknown = await res.json().catch(() => null);
       if (!res.ok) {
         const msg =
@@ -422,8 +420,7 @@ export default function AccountStoreOrdersPage() {
 
   const patchOrderStatusOptimistic = useCallback(
     async (orderId: string, nextStatus: string) => {
-      const phone = loadStoredSession()?.phone?.trim();
-      if (!phone) return;
+      if (!loadStoredSession()) return;
       setStatusError(null);
 
       let previousStatus = "";
@@ -441,7 +438,7 @@ export default function AccountStoreOrdersPage() {
         const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: nextStatus, phone }),
+          body: JSON.stringify({ status: nextStatus }),
         });
         const data: unknown = await res.json().catch(() => null);
         if (!res.ok) {
@@ -487,12 +484,12 @@ export default function AccountStoreOrdersPage() {
 
   useEffect(() => {
     const session = loadStoredSession();
-    const phone = session?.phone?.trim() ? session.phone.trim() : null;
+    const ok = Boolean(session?.email?.trim() || session?.phone?.trim());
     queueMicrotask(() => {
-      setSessionPhone(phone);
+      setSignedIn(ok);
       setBootstrapped(true);
-      if (phone) {
-        void fetchOrders(phone);
+      if (ok) {
+        void fetchOrders();
       }
     });
   }, [fetchOrders]);
@@ -507,7 +504,7 @@ export default function AccountStoreOrdersPage() {
     );
   }
 
-  if (!sessionPhone) {
+  if (!signedIn) {
     return (
       <>
         <BackLink href="/account">Back to dashboard</BackLink>
@@ -533,8 +530,7 @@ export default function AccountStoreOrdersPage() {
         <ReloadBtn
           type="button"
           onClick={() => {
-            const p = loadStoredSession()?.phone?.trim();
-            if (p) void fetchOrders(p);
+            if (loadStoredSession()) void fetchOrders();
           }}
         >
           {t("refreshBtn")}

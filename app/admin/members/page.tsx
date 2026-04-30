@@ -10,6 +10,7 @@ export default async function AdminMembersPage() {
     select: {
       id: true,
       name: true,
+      email: true,
       phone: true,
       role: true,
       createdAt: true,
@@ -20,6 +21,7 @@ export default async function AdminMembersPage() {
   const initial: AdminMemberRow[] = members.map((m) => ({
     id: m.id,
     name: m.name,
+    email: m.email,
     phone: m.phone,
     role: m.role,
     createdAt: m.createdAt.toISOString(),

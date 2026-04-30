@@ -295,7 +295,6 @@ export default function StorePageClient() {
     }
     let cancelled = false;
     const url = new URL("/api/stores/my", window.location.origin);
-    url.searchParams.set("phone", session.phone);
     if (locationSlug) url.searchParams.set("location", locationSlug);
     fetch(url.toString())
       .then((r) => r.json())

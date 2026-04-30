@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getLocationFromUrlOrHeaders } from "@/lib/location";
+import { resolveAccountMember } from "@/lib/resolve-account-member";
 
 function normalizePhone(input: unknown): string {
   if (typeof input !== "string") return "";
@@ -25,12 +26,15 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const phone = normalizePhone(body.phone);
-  if (!phone) {
-    return NextResponse.json({ error: "phone is required." }, { status: 400 });
-  }
-
   const { productId } = await params;
+
+  const account = await resolveAccountMember(request, {
+    phone: normalizePhone(body.phone) || undefined,
+    email: typeof body.email === "string" ? body.email : undefined,
+  });
+  if (!account) {
+    return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+  }
 
   const title = typeof body.title === "string" ? body.title.trim() : null;
   const unit = normalizeOptionalString(body.unit);
@@ -65,14 +69,6 @@ export async function PATCH(
     const location = await getLocationFromUrlOrHeaders(request);
 
     const result = await prisma.$transaction(async (tx) => {
-      const member = await tx.member.findUnique({ where: { phone } });
-      if (!member) {
-        return {
-          status: 403 as const,
-          payload: { error: "Member not found." },
-        };
-      }
-
       const product = await tx.product.findUnique({
         where: { id: productId },
         include: {
@@ -82,7 +78,7 @@ export async function PATCH(
       if (!product) {
         return { status: 404 as const, payload: { error: "Not found." } };
       }
-      if (product.store.memberId !== member.id) {
+      if (product.store.memberId !== account.id) {
         return { status: 403 as const, payload: { error: "Forbidden." } };
       }
       if (product.store.locationId !== location.id) {
@@ -129,25 +125,20 @@ export async function DELETE(
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const phone = normalizePhone(body.phone);
-  if (!phone) {
-    return NextResponse.json({ error: "phone is required." }, { status: 400 });
-  }
-
   const { productId } = await params;
+
+  const account = await resolveAccountMember(request, {
+    phone: normalizePhone(body.phone) || undefined,
+    email: typeof body.email === "string" ? body.email : undefined,
+  });
+  if (!account) {
+    return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+  }
 
   try {
     const location = await getLocationFromUrlOrHeaders(request);
 
     const result = await prisma.$transaction(async (tx) => {
-      const member = await tx.member.findUnique({ where: { phone } });
-      if (!member) {
-        return {
-          status: 403 as const,
-          payload: { error: "Member not found." },
-        };
-      }
-
       const product = await tx.product.findUnique({
         where: { id: productId },
         include: { store: { select: { memberId: true, locationId: true } } },
@@ -155,7 +146,7 @@ export async function DELETE(
       if (!product) {
         return { status: 404 as const, payload: { error: "Not found." } };
       }
-      if (product.store.memberId !== member.id) {
+      if (product.store.memberId !== account.id) {
         return { status: 403 as const, payload: { error: "Forbidden." } };
       }
       if (product.store.locationId !== location.id) {

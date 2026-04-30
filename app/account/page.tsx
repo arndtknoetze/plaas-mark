@@ -215,7 +215,7 @@ export default function AccountDashboardPage() {
       setLoading(true);
       try {
         const res = await fetch(
-          `/api/account/summary?phone=${encodeURIComponent(session.phone)}${locationQuery}`,
+          `/api/account/summary${locationQuery.replace(/^&/, "?")}`,
           { cache: "no-store" },
         );
         const data: unknown = await res.json().catch(() => null);
@@ -253,7 +253,7 @@ export default function AccountDashboardPage() {
       setLoadingAnalytics(true);
       try {
         const res = await fetch(
-          `/api/account/analytics?phone=${encodeURIComponent(session.phone)}${locationQuery}`,
+          `/api/account/analytics${locationQuery.replace(/^&/, "?")}`,
           { cache: "no-store" },
         );
         const data: unknown = await res.json().catch(() => null);
